@@ -164,8 +164,8 @@ export default function HomePage() {
 
   const greeting =
     lang === "hi"
-      ? `नमस्ते ${user.name.split(" ")[0]} जी 🙏`
-      : `Hello ${user.name.split(" ")[0]} 🙏`;
+      ? `नमस्ते ${user.name.split(" ")[0]} जी`
+      : `Hello ${user.name.split(" ")[0]}`;
 
   const badges: string[] = [];
   if (user.bloodGroup) badges.push(`🩸 ${user.bloodGroup}`);

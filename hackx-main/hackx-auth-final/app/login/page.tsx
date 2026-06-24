@@ -93,7 +93,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ identifier: phone }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error); return; }
@@ -177,7 +177,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ identifier: phone }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error); return; }
@@ -292,8 +292,12 @@ export default function LoginPage() {
     <div style={{ background: "#0d1520", minHeight: "100vh", display: "flex", justifyContent: "center" }}>
       <div style={{ width: 390, background: C.bg, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ background: `linear-gradient(135deg,${C.primary},${C.primaryDark})`, padding: "44px 20px 22px" }}>
-          <div style={{ fontSize: 32 }}>
-            {step === "otp" ? "📱" : "🙏"}
+          <div style={{ color: "white", marginBottom: 4 }}>
+            {step === "otp" ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            )}
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "white", lineHeight: 1.3, marginTop: 8 }}>
             {step === "otp"
