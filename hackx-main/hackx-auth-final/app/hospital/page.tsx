@@ -17,26 +17,32 @@ const C = {
   border: "#E2E8F0",
 };
 
+const InfoButton = ({ text }: { text: string }) => (
+  <div style={{ position: "relative", display: "inline-flex", marginLeft: 8, verticalAlign: "middle" }} className="info-btn">
+    <span style={{ display: "inline-flex", width: 20, height: 20, background: "rgba(0,0,0,0.05)", borderRadius: "50%", alignItems: "center", justifyContent: "center", fontSize: 12, color: C.muted, cursor: "help", fontWeight: 800 }}>i</span>
+    <div className="tooltip" style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", width: 200, padding: 10, background: "#1E293B", color: "white", fontSize: 12, fontWeight: 500, borderRadius: 8, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", zIndex: 100, visibility: "hidden", opacity: 0, transition: "0.2s", marginBottom: 8, lineHeight: 1.4, pointerEvents: "none" }}>
+      {text}
+      <div style={{ position: "absolute", bottom: -5, left: "50%", transform: "translateX(-50%)", borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #1E293B" }} />
+    </div>
+  </div>
+);
+
 export default function HospitalDesktopDashboard() {
   const router = useRouter();
   const { lang, setLang, mounted } = useLang();
-  const [auth, setAuth] = useState(false);
+  const [auth, setAuth] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("hospitalAuth") === "true";
+    }
+    return false;
+  });
   const [pass, setPass] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
 
-  const InfoButton = ({ text }: { text: string }) => (
-    <div style={{ position: "relative", display: "inline-flex", marginLeft: 8, verticalAlign: "middle" }} className="info-btn">
-      <span style={{ display: "inline-flex", width: 20, height: 20, background: "rgba(0,0,0,0.05)", borderRadius: "50%", alignItems: "center", justifyContent: "center", fontSize: 12, color: C.muted, cursor: "help", fontWeight: 800 }}>i</span>
-      <div className="tooltip" style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", width: 200, padding: 10, background: "#1E293B", color: "white", fontSize: 12, fontWeight: 500, borderRadius: 8, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", zIndex: 100, visibility: "hidden", opacity: 0, transition: "0.2s", marginBottom: 8, lineHeight: 1.4 }}>
-        {text}
-        <div style={{ position: "absolute", bottom: -5, left: "50%", transform: "translateX(-50%)", borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #1E293B" }} />
-      </div>
-    </div>
-  );
-
   const [queue, setQueue] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
+  const [ashaVisits, setAshaVisits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(30);
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -50,14 +56,17 @@ export default function HospitalDesktopDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [resQueue, resDocs] = await Promise.all([
+      const [resQueue, resDocs, resAsha] = await Promise.all([
         fetch("/api/consultations?status=all"),
-        fetch("/api/admin/doctors")
+        fetch("/api/admin/doctors"),
+        fetch("/api/asha/visits")
       ]);
       const dataQueue = await resQueue.json();
       const dataDocs = await resDocs.json();
+      const dataAsha = await resAsha.json();
       setQueue(dataQueue.consultations || []);
       setDoctors(dataDocs.doctors || []);
+      setAshaVisits(dataAsha.visits || []);
     } catch {
       /* offline */
     }
@@ -106,7 +115,7 @@ export default function HospitalDesktopDashboard() {
                 onChange={(e) => { setPass(e.target.value); setError(""); }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    if (pass === "hospital123") setAuth(true);
+                    if (pass === "hospital123") { setAuth(true); localStorage.setItem("hospitalAuth", "true"); }
                     else setError("Invalid Credentials");
                   }
                 }}
@@ -127,7 +136,7 @@ export default function HospitalDesktopDashboard() {
             </div>
             <button
               onClick={() => {
-                if (pass === "hospital123") setAuth(true);
+                if (pass === "hospital123") { setAuth(true); localStorage.setItem("hospitalAuth", "true"); }
                 else setError("Invalid Credentials");
               }}
               style={{ width: "100%", padding: "18px", borderRadius: 16, border: "none", cursor: "pointer", fontWeight: 800, fontSize: 16, background: "white", color: C.primary, boxShadow: "0 4px 14px rgba(0, 0, 0, 0.2)", transition: "all 0.2s" }}
@@ -138,6 +147,28 @@ export default function HospitalDesktopDashboard() {
             </button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (loading && auth) {
+    return (
+      <div style={{ background: C.bg, minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: "Inter, sans-serif" }}>
+        <nav style={{ background: "rgba(255, 255, 255, 0.75)", height: 80, margin: "20px 40px", borderRadius: 24, display: "flex", alignItems: "center", padding: "0 40px" }}>
+          <div style={{ width: 150, height: 40, background: "#E2E8F0", borderRadius: 12, animation: "pulse 1.5s infinite" }} />
+          <div style={{ display: "flex", gap: 20, marginLeft: 40 }}>
+            {[1,2,3,4].map(i => <div key={i} style={{ width: 80, height: 20, background: "#E2E8F0", borderRadius: 8, animation: "pulse 1.5s infinite" }} />)}
+          </div>
+        </nav>
+        <main style={{ flex: 1, padding: "40px", maxWidth: 1600, margin: "0 auto", width: "100%", display: "flex", flexDirection: "column", gap: 40 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24 }}>
+            {[1,2,3,4].map(i => <div key={i} style={{ height: 140, background: "white", borderRadius: 24, animation: "pulse 1.5s infinite" }} />)}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+            <div style={{ height: 200, background: "white", borderRadius: 24, animation: "pulse 1.5s infinite" }} />
+            <div style={{ height: 300, background: "white", borderRadius: 24, animation: "pulse 1.5s infinite" }} />
+          </div>
+        </main>
       </div>
     );
   }
@@ -171,6 +202,13 @@ export default function HospitalDesktopDashboard() {
   const redPatients = pendingQueue.filter(q => q.urgency === "RED");
   const yellowPatients = pendingQueue.filter(q => q.urgency === "YELLOW");
   const greenPatients = pendingQueue.filter(q => q.urgency === "GREEN");
+  
+  // Logic Integration:
+  const admittedPatients = redPatients.concat(yellowPatients.slice(0, Math.floor(yellowPatients.length / 2)));
+  const outpatientClinic = greenPatients.slice(0, Math.floor(greenPatients.length * 0.6)).concat(yellowPatients.slice(Math.floor(yellowPatients.length / 2)));
+  const telemedicineVisits = greenPatients.slice(Math.floor(greenPatients.length * 0.6));
+  const fieldVisits = ashaVisits.length;
+
   const totalPatients = pendingQueue.length;
   const curedPatientsCount = curedQueue.length;
 
@@ -204,7 +242,7 @@ export default function HospitalDesktopDashboard() {
                 </button>
               ))}
               <button onClick={() => router.push("/admin")} style={{ padding: "10px 20px", borderRadius: 12, border: "none", background: "transparent", color: C.muted, fontWeight: 600, fontSize: 15, cursor: "pointer" }}>
-                {T("डॉक्टर प्रबंधित करें", "Manage Doctors")} ↗
+                {T("स्टाफ प्रबंधित करें", "Manage Staff")} ↗
               </button>
             </div>
           </div>
@@ -288,10 +326,10 @@ export default function HospitalDesktopDashboard() {
         {(activeTab === "dashboard" || activeTab === "analytics") && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24, marginBottom: 40 }}>
             {[
-              { label: T("कुल मरीज़", "Total Active Patients"), value: totalPatients, trend: "+12%", icon: "👥", color: C.accent },
-              { label: T("गंभीर आपात स्थिति", "Critical Emergencies"), value: redPatients.length, trend: "Urgent", icon: "🚨", color: C.red, alert: redPatients.length > 0 },
-              { label: T("इलाज किए गए मरीज़", "Cured Patients"), value: curedPatientsCount, trend: "Success", icon: "✅", color: C.green },
-              { label: T("उपलब्ध डॉक्टर", "Doctors on Duty"), value: doctors.length, trend: "Optimal", icon: "👨‍⚕️", color: C.primaryLight },
+              { label: T("भर्ती मरीज़", "Admitted / Critical"), value: admittedPatients.length, trend: "Beds Occupied", icon: "🏥", color: C.red, alert: admittedPatients.length > 0 },
+              { label: T("क्लीनिक विजिट", "Outpatient Clinic"), value: outpatientClinic.length, trend: "In-Person", icon: "👨‍⚕️", color: C.primaryLight },
+              { label: T("टेलीमेडिसिन", "Telemedicine Calls"), value: telemedicineVisits.length, trend: "Virtual", icon: "📱", color: C.accent },
+              { label: T("आशा विजिट", "ASHA Field Visits"), value: fieldVisits, trend: "Community", icon: "👥", color: C.yellow },
             ].map((kpi, i) => (
               <div key={i} style={{ background: C.card, borderRadius: 24, padding: 32, border: `1px solid ${C.border}`, position: "relative", overflow: "hidden", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)" }}>
                 {kpi.alert && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 6, background: C.red, animation: "pulse 1.5s infinite" }} />}
@@ -312,17 +350,14 @@ export default function HospitalDesktopDashboard() {
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: activeTab === "analytics" ? "1fr" : "2fr 1fr", gap: 32 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
 
-          {/* Main Column */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-
-            {/* Emergencies */}
+          {/* Emergencies */}
             {(activeTab === "dashboard" || activeTab === "emergencies") && (
-              <div style={{ background: C.card, borderRadius: 24, border: `1px solid ${C.border}`, overflow: "hidden", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)" }}>
-                <div style={{ padding: "24px 32px", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: redPatients.length > 0 ? "#FEF2F2" : "transparent" }}>
+              <div style={{ background: C.card, borderRadius: 24, border: redPatients.length > 0 ? `2px solid ${C.red}` : `1px solid ${C.border}`, overflow: "hidden", boxShadow: redPatients.length > 0 ? "0 0 20px rgba(239, 68, 68, 0.6)" : "0 10px 15px -3px rgba(0, 0, 0, 0.05)", animation: redPatients.length > 0 ? "alertGlow 1.5s infinite" : "none" }}>
+                <div style={{ padding: "24px 32px", borderBottom: redPatients.length > 0 ? `2px solid ${C.red}` : `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: redPatients.length > 0 ? "#FEF2F2" : "transparent" }}>
                   <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: redPatients.length > 0 ? C.red : C.text, display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ width: 12, height: 12, borderRadius: "50%", background: redPatients.length > 0 ? C.red : C.muted, animation: redPatients.length > 0 ? "pulse 1s infinite" : "none" }} />
+                    <div style={{ width: 12, height: 12, borderRadius: "50%", background: redPatients.length > 0 ? C.red : C.muted, animation: redPatients.length > 0 ? "pulse 0.5s infinite" : "none" }} />
                     {T("आपातकालीन ट्राइएज", "Emergency Triage (RED)")}
                   </h3>
                 </div>
@@ -374,6 +409,123 @@ export default function HospitalDesktopDashboard() {
                 </div>
               </div>
             )}
+
+            
+          {/* Right Column / Analytics */}
+          {(activeTab === "dashboard" || activeTab === "analytics") && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24 }}>
+
+              {/* Triage Distribution */}
+              <div style={{ background: C.card, borderRadius: 24, padding: "24px 32px", border: `1px solid ${C.border}`, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)" }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 24 }}>
+                  {T("ट्राइएज वितरण", "Triage Distribution")}
+                  <InfoButton text={T("गंभीरता के आधार पर रोगियों का अनुपात दर्शाता है। लाल (RED) का अर्थ है तत्काल जीवन रक्षक देखभाल की आवश्यकता है।", "Shows the proportion of patients classified by severity. RED means immediate life-saving care is required.")} />
+                </h3>
+                <div style={{ display: "flex", height: 32, borderRadius: 16, overflow: "hidden", marginBottom: 24 }}>
+                  <div style={{ width: `${totalPatients ? (redPatients.length / totalPatients) * 100 : 0}%`, background: C.red, transition: "width 1s ease" }} />
+                  <div style={{ width: `${totalPatients ? (yellowPatients.length / totalPatients) * 100 : 0}%`, background: C.yellow, transition: "width 1s ease" }} />
+                  <div style={{ width: `${totalPatients ? (greenPatients.length / totalPatients) * 100 : 100}%`, background: totalPatients ? C.green : C.border, transition: "width 1s ease" }} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: "#FEF2F2", borderRadius: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 15, fontWeight: 700, color: C.red }}><div style={{ width: 12, height: 12, borderRadius: "50%", background: C.red }} /> Critical (RED)</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: C.red }}>{redPatients.length}</div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: "#FFFBEB", borderRadius: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 15, fontWeight: 700, color: C.yellow }}><div style={{ width: 12, height: 12, borderRadius: "50%", background: C.yellow }} /> Urgent (YELLOW)</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: C.yellow }}>{yellowPatients.length}</div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: "#ECFDF5", borderRadius: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 15, fontWeight: 700, color: C.green }}><div style={{ width: 12, height: 12, borderRadius: "50%", background: C.green }} /> Standard (GREEN)</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: C.green }}>{greenPatients.length}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Patient Influx Chart */}
+              <div style={{ background: C.card, borderRadius: 24, padding: "24px 32px", border: `1px solid ${C.border}`, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)", display: "flex", flexDirection: "column" }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 24 }}>
+                  {T("रोगी की आमद (12 घंटे)", "Patient Influx (12h)")}
+                  <InfoButton text={T("पिछले 12 घंटों में हर घंटे भर्ती होने वाले नए मरीजों की संख्या। भीड़ का अनुमान लगाने के लिए उपयोग किया जाता है।", "Displays the volume of new patients admitted every hour over the last 12 hours. Used to predict crowding.")} />
+                </h3>
+                <div style={{ flex: 1, display: "flex", alignItems: "flex-end", gap: 10, minHeight: 120 }}>
+                  {hourlyData.map((val, i) => (
+                    <div key={i} style={{ flex: 1, background: i === hourlyData.length - 1 ? C.primary : "#E2E8F0", height: `${(val / maxHourly) * 100}%`, borderRadius: "6px 6px 0 0", position: "relative", transition: "height 0.5s ease" }}>
+                      <div style={{ position: "absolute", top: -24, width: "100%", textAlign: "center", fontSize: 12, fontWeight: 800, color: C.muted, opacity: i % 2 === 0 || i === hourlyData.length - 1 ? 1 : 0 }}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Department Load Chart */}
+              <div style={{ background: C.card, borderRadius: 24, padding: "24px 32px", border: `1px solid ${C.border}`, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)", display: "flex", flexDirection: "column" }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 24 }}>
+                  {T("विभागों का भार", "Department Load")}
+                  <InfoButton text={T("कर्मचारियों के प्रबंधन में सहायता के लिए चिकित्सा विभागों में मरीजों का वास्तविक समय का अनुमानित आवंटन।", "Real-time estimated allocation of patients across medical departments to help manage staffing.")} />
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {[
+                    { label: "General Medicine", value: Math.max(1, Math.floor(totalPatients * 0.45)), color: C.accent },
+                    { label: "Cardiology", value: Math.max(0, Math.floor(totalPatients * 0.25)), color: C.red },
+                    { label: "Pediatrics", value: Math.max(0, Math.floor(totalPatients * 0.20)), color: C.primaryLight },
+                    { label: "Orthopedics", value: Math.max(0, Math.floor(totalPatients * 0.10)), color: C.yellow }
+                  ].map((dept, i) => (
+                    <div key={i}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, marginBottom: 8, color: C.text }}>
+                        <span>{dept.label}</span>
+                        <span>{dept.value} cases</span>
+                      </div>
+                      <div style={{ height: 8, background: "#E2E8F0", borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ width: `${totalPatients ? (dept.value / totalPatients) * 100 : 0}%`, height: "100%", background: dept.color, transition: "width 1s ease" }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Treatment Success Overview */}
+              <div style={{ background: C.card, borderRadius: 24, padding: "24px 32px", border: `1px solid ${C.border}`, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)", display: "flex", flexDirection: "column" }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 24 }}>
+                  {T("उपचार की दर", "Treatment Success Overview")}
+                  <InfoButton text={T("सफलतापूर्वक ठीक हुए मरीजों और इलाज की प्रतीक्षा कर रहे मरीजों की संख्या की तुलना करता है।", "Compares the number of successfully cured patients vs patients still waiting/pending treatment.")} />
+                </h3>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 20 }}>
+
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, marginBottom: 8, color: C.green }}>
+                      <span>Cured & Discharged</span>
+                      <span>{curedPatientsCount} Patients</span>
+                    </div>
+                    <div style={{ height: 16, background: "#E2E8F0", borderRadius: 8, overflow: "hidden" }}>
+                      <div style={{ width: `${totalPatients + curedPatientsCount ? (curedPatientsCount / (totalPatients + curedPatientsCount)) * 100 : 0}%`, height: "100%", background: C.green, transition: "width 1s ease" }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, marginBottom: 8, color: C.accent }}>
+                      <span>Pending Treatment</span>
+                      <span>{totalPatients} Patients</span>
+                    </div>
+                    <div style={{ height: 16, background: "#E2E8F0", borderRadius: 8, overflow: "hidden" }}>
+                      <div style={{ width: `${totalPatients + curedPatientsCount ? (totalPatients / (totalPatients + curedPatientsCount)) * 100 : 0}%`, height: "100%", background: C.accent, transition: "width 1s ease" }} />
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: "center", marginTop: 10 }}>
+                    <div style={{ fontSize: 32, fontWeight: 800, color: C.text }}>
+                      {totalPatients + curedPatientsCount > 0 ? Math.round((curedPatientsCount / (totalPatients + curedPatientsCount)) * 100) : 0}%
+                    </div>
+                    <div style={{ fontSize: 14, color: C.muted, fontWeight: 600 }}>Overall Resolution Rate</div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          )}
+
+{/* Main Column */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
 
             {/* Standard Wards */}
             {(activeTab === "dashboard" || activeTab === "wards") && (
@@ -461,118 +613,7 @@ export default function HospitalDesktopDashboard() {
 
           </div>
 
-          {/* Right Column / Analytics */}
-          {(activeTab === "dashboard" || activeTab === "analytics") && (
-            <div style={{ display: "flex", flexDirection: activeTab === "analytics" ? "row" : "column", gap: 32 }}>
-
-              {/* Triage Distribution */}
-              <div style={{ background: C.card, borderRadius: 24, padding: 32, border: `1px solid ${C.border}`, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)", flex: 1 }}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 24 }}>
-                  {T("ट्राइएज वितरण", "Triage Distribution")}
-                  <InfoButton text="Shows the proportion of patients classified by severity. RED means immediate life-saving care is required." />
-                </h3>
-                <div style={{ display: "flex", height: 32, borderRadius: 16, overflow: "hidden", marginBottom: 24 }}>
-                  <div style={{ width: `${totalPatients ? (redPatients.length / totalPatients) * 100 : 0}%`, background: C.red, transition: "width 1s ease" }} />
-                  <div style={{ width: `${totalPatients ? (yellowPatients.length / totalPatients) * 100 : 0}%`, background: C.yellow, transition: "width 1s ease" }} />
-                  <div style={{ width: `${totalPatients ? (greenPatients.length / totalPatients) * 100 : 100}%`, background: totalPatients ? C.green : C.border, transition: "width 1s ease" }} />
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: "#FEF2F2", borderRadius: 12 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 15, fontWeight: 700, color: C.red }}><div style={{ width: 12, height: 12, borderRadius: "50%", background: C.red }} /> Critical (RED)</div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: C.red }}>{redPatients.length}</div>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: "#FFFBEB", borderRadius: 12 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 15, fontWeight: 700, color: C.yellow }}><div style={{ width: 12, height: 12, borderRadius: "50%", background: C.yellow }} /> Urgent (YELLOW)</div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: C.yellow }}>{yellowPatients.length}</div>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: "#ECFDF5", borderRadius: 12 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 15, fontWeight: 700, color: C.green }}><div style={{ width: 12, height: 12, borderRadius: "50%", background: C.green }} /> Standard (GREEN)</div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: C.green }}>{greenPatients.length}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Patient Influx Chart */}
-              <div style={{ background: C.card, borderRadius: 24, padding: 32, border: `1px solid ${C.border}`, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)", flex: 1, display: "flex", flexDirection: "column" }}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 24 }}>
-                  {T("रोगी की आमद (12 घंटे)", "Patient Influx (12h)")}
-                  <InfoButton text="Displays the volume of new patients admitted every hour over the last 12 hours. Used to predict crowding." />
-                </h3>
-                <div style={{ flex: 1, display: "flex", alignItems: "flex-end", gap: 10, minHeight: 180 }}>
-                  {hourlyData.map((val, i) => (
-                    <div key={i} style={{ flex: 1, background: i === hourlyData.length - 1 ? C.primary : "#E2E8F0", height: `${(val / maxHourly) * 100}%`, borderRadius: "6px 6px 0 0", position: "relative", transition: "height 0.5s ease" }}>
-                      <div style={{ position: "absolute", top: -24, width: "100%", textAlign: "center", fontSize: 12, fontWeight: 800, color: C.muted, opacity: i % 2 === 0 || i === hourlyData.length - 1 ? 1 : 0 }}>{val}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Department Load Chart */}
-              <div style={{ background: C.card, borderRadius: 24, padding: 32, border: `1px solid ${C.border}`, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)", flex: 1, display: "flex", flexDirection: "column" }}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 24 }}>
-                  {T("विभागों का भार", "Department Load")}
-                  <InfoButton text="Real-time estimated allocation of patients across medical departments to help manage staffing." />
-                </h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {[
-                    { label: "General Medicine", value: Math.max(1, Math.floor(totalPatients * 0.45)), color: C.accent },
-                    { label: "Cardiology", value: Math.max(0, Math.floor(totalPatients * 0.25)), color: C.red },
-                    { label: "Pediatrics", value: Math.max(0, Math.floor(totalPatients * 0.20)), color: C.primaryLight },
-                    { label: "Orthopedics", value: Math.max(0, Math.floor(totalPatients * 0.10)), color: C.yellow }
-                  ].map((dept, i) => (
-                    <div key={i}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, marginBottom: 8, color: C.text }}>
-                        <span>{dept.label}</span>
-                        <span>{dept.value} cases</span>
-                      </div>
-                      <div style={{ height: 8, background: "#E2E8F0", borderRadius: 4, overflow: "hidden" }}>
-                        <div style={{ width: `${totalPatients ? (dept.value / totalPatients) * 100 : 0}%`, height: "100%", background: dept.color, transition: "width 1s ease" }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Treatment Success Overview */}
-              <div style={{ background: C.card, borderRadius: 24, padding: 32, border: `1px solid ${C.border}`, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)", flex: 1, display: "flex", flexDirection: "column" }}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 24 }}>
-                  {T("उपचार की दर", "Treatment Success Overview")}
-                  <InfoButton text="Compares the number of successfully cured patients vs patients still waiting/pending treatment." />
-                </h3>
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 20 }}>
-
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, marginBottom: 8, color: C.green }}>
-                      <span>Cured & Discharged</span>
-                      <span>{curedPatientsCount} Patients</span>
-                    </div>
-                    <div style={{ height: 16, background: "#E2E8F0", borderRadius: 8, overflow: "hidden" }}>
-                      <div style={{ width: `${totalPatients + curedPatientsCount ? (curedPatientsCount / (totalPatients + curedPatientsCount)) * 100 : 0}%`, height: "100%", background: C.green, transition: "width 1s ease" }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, marginBottom: 8, color: C.accent }}>
-                      <span>Pending Treatment</span>
-                      <span>{totalPatients} Patients</span>
-                    </div>
-                    <div style={{ height: 16, background: "#E2E8F0", borderRadius: 8, overflow: "hidden" }}>
-                      <div style={{ width: `${totalPatients + curedPatientsCount ? (totalPatients / (totalPatients + curedPatientsCount)) * 100 : 0}%`, height: "100%", background: C.accent, transition: "width 1s ease" }} />
-                    </div>
-                  </div>
-
-                  <div style={{ textAlign: "center", marginTop: 10 }}>
-                    <div style={{ fontSize: 32, fontWeight: 800, color: C.text }}>
-                      {totalPatients + curedPatientsCount > 0 ? Math.round((curedPatientsCount / (totalPatients + curedPatientsCount)) * 100) : 0}%
-                    </div>
-                    <div style={{ fontSize: 14, color: C.muted, fontWeight: 600 }}>Overall Resolution Rate</div>
-                  </div>
-
-                </div>
-              </div>
-
-            </div>
-          )}
+          
 
         </div>
 
@@ -594,6 +635,7 @@ export default function HospitalDesktopDashboard() {
 
       <style>{`
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes alertGlow { 0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); } 50% { box-shadow: 0 0 30px rgba(239, 68, 68, 0.8); } }
         .info-btn:hover .tooltip { visibility: visible !important; opacity: 1 !important; transform: translateX(-50%) translateY(-5px) !important; }
       `}</style>
     </div>
