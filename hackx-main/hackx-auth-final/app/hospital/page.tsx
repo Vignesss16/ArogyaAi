@@ -326,12 +326,16 @@ export default function HospitalDesktopDashboard() {
         {(activeTab === "dashboard" || activeTab === "analytics") && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24, marginBottom: 40 }}>
             {[
-              { label: T("भर्ती मरीज़", "Admitted / Critical"), value: admittedPatients.length, trend: "Beds Occupied", icon: "🏥", color: C.red, alert: admittedPatients.length > 0 },
+              { label: T("कुल सक्रिय मरीज़", "Total Active Patients"), value: totalPatients, trend: "+12%", icon: "👥", color: C.primary },
+              { label: T("गंभीर आपात स्थिति", "Critical Emergencies"), id: "emergency", value: redPatients.length, trend: "Urgent", icon: "🚨", color: C.red, alert: redPatients.length > 0 },
+              { label: T("ठीक हुए मरीज़", "Cured Patients"), value: curedPatientsCount, trend: "Success", icon: "✅", color: C.green },
+              { label: T("ड्यूटी पर डॉक्टर", "Doctors on Duty"), value: doctors.length, trend: "Optimal", icon: "👩‍⚕️", color: C.primaryLight },
+              { label: T("भर्ती मरीज़", "Admitted / Critical"), value: admittedPatients.length, trend: "Beds Occupied", icon: "🏥", color: C.red },
               { label: T("क्लीनिक विजिट", "Outpatient Clinic"), value: outpatientClinic.length, trend: "In-Person", icon: "👨‍⚕️", color: C.primaryLight },
               { label: T("टेलीमेडिसिन", "Telemedicine Calls"), value: telemedicineVisits.length, trend: "Virtual", icon: "📱", color: C.accent },
-              { label: T("आशा विजिट", "ASHA Field Visits"), value: fieldVisits, trend: "Community", icon: "👥", color: C.yellow },
+              { label: T("आशा विजिट", "ASHA Field Visits"), value: fieldVisits, trend: "Community", icon: "🏘️", color: C.yellow },
             ].map((kpi, i) => (
-              <div key={i} style={{ background: C.card, borderRadius: 24, padding: 32, border: `1px solid ${C.border}`, position: "relative", overflow: "hidden", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)" }}>
+              <div key={i} onClick={() => kpi.id === "emergency" && document.getElementById("emergency-triage")?.scrollIntoView({ behavior: "smooth", block: "center" })} style={{ background: C.card, borderRadius: 24, padding: 32, border: `1px solid ${C.border}`, position: "relative", overflow: "hidden", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)", cursor: kpi.id === "emergency" ? "pointer" : "default", animation: kpi.id === "emergency" && kpi.alert ? "alertGlow 1.5s infinite" : "none" }}>
                 {kpi.alert && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 6, background: C.red, animation: "pulse 1.5s infinite" }} />}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
                   <div style={{ width: 56, height: 56, borderRadius: 16, background: `${kpi.color}15`, color: kpi.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
@@ -354,7 +358,7 @@ export default function HospitalDesktopDashboard() {
 
           {/* Emergencies */}
             {(activeTab === "dashboard" || activeTab === "emergencies") && (
-              <div style={{ background: C.card, borderRadius: 24, border: redPatients.length > 0 ? `2px solid ${C.red}` : `1px solid ${C.border}`, overflow: "hidden", boxShadow: redPatients.length > 0 ? "0 0 20px rgba(239, 68, 68, 0.6)" : "0 10px 15px -3px rgba(0, 0, 0, 0.05)", animation: redPatients.length > 0 ? "alertGlow 1.5s infinite" : "none" }}>
+              <div id="emergency-triage" style={{ background: C.card, borderRadius: 24, border: redPatients.length > 0 ? `2px solid ${C.red}` : `1px solid ${C.border}`, overflow: "hidden", boxShadow: redPatients.length > 0 ? "0 0 20px rgba(239, 68, 68, 0.6)" : "0 10px 15px -3px rgba(0, 0, 0, 0.05)", animation: redPatients.length > 0 ? "alertGlow 1.5s infinite" : "none" }}>
                 <div style={{ padding: "24px 32px", borderBottom: redPatients.length > 0 ? `2px solid ${C.red}` : `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: redPatients.length > 0 ? "#FEF2F2" : "transparent" }}>
                   <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: redPatients.length > 0 ? C.red : C.text, display: "flex", alignItems: "center", gap: 12 }}>
                     <div style={{ width: 12, height: 12, borderRadius: "50%", background: redPatients.length > 0 ? C.red : C.muted, animation: redPatients.length > 0 ? "pulse 0.5s infinite" : "none" }} />
