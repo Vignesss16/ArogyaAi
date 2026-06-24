@@ -24,9 +24,21 @@ export async function GET(req: NextRequest) {
     const patientPhone = req.nextUrl.searchParams.get("patientPhone");
     const submittedBy = req.nextUrl.searchParams.get("submittedBy");
     const isCritical = req.nextUrl.searchParams.get("isCritical");
+    const doctorId = req.nextUrl.searchParams.get("doctorId");
 
     let query: any = {};
-    if (patientPhone) query.patientPhone = patientPhone;
+    if (patientPhone) {
+      if (/^\d+$/.test(patientPhone) || patientPhone.startsWith("unknown-")) {
+        query.patientPhone = patientPhone;
+      } else {
+        query.patientName = { $regex: new RegExp(patientPhone, "i") };
+      }
+    } else if (doctorId) {
+      const Consultation = (await import("@/models/Consultation")).default;
+      const consultations = await Consultation.find({ doctorId });
+      const patientPhones = consultations.map(c => c.patientPhone);
+      query.patientPhone = { $in: patientPhones };
+    }
     if (submittedBy) query.submittedBy = submittedBy;
     if (isCritical === "true") query.isCritical = true;
 
@@ -45,6 +57,26 @@ export async function POST(req: NextRequest) {
 
     if (!patientPhone || !testType || !result) {
       return NextResponse.json({ error: "Patient phone, test type, and result are required" }, { status: 400 });
+    }
+
+    // Auto-create patient if they don't exist in the system
+    if (patientName) {
+      const Patient = (await import("@/models/Patient")).default;
+      const patientQuery = patientPhone && patientPhone !== "unknown"
+        ? { phone: patientPhone }
+        : { name: patientName };
+        
+      const existingPatient = await Patient.findOne(patientQuery);
+      
+      if (!existingPatient) {
+        await Patient.create({
+          name: patientName,
+          phone: patientPhone && patientPhone !== "unknown" ? patientPhone : `unknown-${Date.now()}`,
+          age: 0,
+          gender: "unknown",
+          village: "Auto-registered via Blood Test",
+        });
+      }
     }
 
     // Auto-detect critical values

@@ -6,10 +6,21 @@ export async function GET(req: NextRequest) {
   const phone = req.nextUrl.searchParams.get("phone");
   try {
     await dbConnect();
-    const query = phone ? { phone } : {};
+    
+    let query: any = {};
+    if (phone) {
+      // If it contains only digits or starts with 'unknown-', treat as phone
+      if (/^\d+$/.test(phone) || phone.startsWith("unknown-")) {
+        query = { phone };
+      } else {
+        // Otherwise treat as a case-insensitive name search
+        query = { name: { $regex: new RegExp(phone, "i") } };
+      }
+    }
+
     const patients = phone
       ? await Patient.findOne(query)
-      : await Patient.find(query).limit(50);
+      : await Patient.find(query).sort({ createdAt: -1 }).limit(50);
     return NextResponse.json(phone ? { patient: patients } : { patients });
   } catch (err) {
     return NextResponse.json({ error: "DB error", details: String(err) }, { status: 500 });

@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { useLang } from "@/lib/useLang";
+import { useSession, signOut } from "next-auth/react";
 import dynamic from "next/dynamic";
 const VideoCallModal = dynamic(() => import("@/components/VideoCallModal"), { ssr: false });
 
@@ -48,6 +49,7 @@ type SOSAlert = { _id: string; village: string; description: string; affectedCou
 
 export default function DoctorDashboardPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const { lang, setLang, mounted } = useLang();
   const [tick, setTick] = useState(30);
   const [activeTab, setActiveTab] = useState<"queue" | "lab-reports">("queue");
@@ -69,14 +71,16 @@ export default function DoctorDashboardPage() {
 
   const fetchQueue = useCallback(async () => {
     try {
-      const res = await fetch("/api/consultations?status=pending");
+      // Append doctorId to query if available
+      const doctorIdQuery = session?.user?.id ? `&doctorId=${session.user.id}` : "";
+      const res = await fetch(`/api/consultations?status=pending${doctorIdQuery}`);
       const data = await res.json();
       setQueue(data.consultations || []);
     } catch {
       /* offline */
     }
     setLoadingQueue(false);
-  }, []);
+  }, [session]);
 
   const fetchSOS = useCallback(async () => {
     try {
@@ -88,10 +92,11 @@ export default function DoctorDashboardPage() {
 
   const fetchBloodTests = useCallback(async () => {
     try {
+      const doctorIdQuery = session?.user?.id ? `&doctorId=${session.user.id}` : "";
       // Fetch critical tests first, then all tests
       const [criticalRes, allRes] = await Promise.all([
-        fetch("/api/blood-tests?isCritical=true"),
-        fetch("/api/blood-tests"),
+        fetch(`/api/blood-tests?isCritical=true${doctorIdQuery}`),
+        fetch(`/api/blood-tests?${doctorIdQuery.slice(1)}`),
       ]);
       const criticalData = await criticalRes.json();
       const allData = await allRes.json();
@@ -106,7 +111,7 @@ export default function DoctorDashboardPage() {
       setBloodTests([]);
     }
     setLoadingLabs(false);
-  }, []);
+  }, [session]);
 
   // Auto-refresh lab reports every 30 seconds
   useEffect(() => {
@@ -281,7 +286,7 @@ export default function DoctorDashboardPage() {
                 {lang === "hi" ? "EN" : "हिं"}
               </button>
               <button
-                onClick={() => router.push("/login")}
+                onClick={() => signOut({ callbackUrl: "/doctor/login" })}
                 style={{
                   background: "rgba(0,0,0,0.05)",
                   border: "none",
@@ -301,10 +306,10 @@ export default function DoctorDashboardPage() {
           {/* Header */}
           <div style={{ background: "#1A2332", padding: "14px 16px" }}>
             <h2 style={{ fontSize: 17, fontWeight: 800, color: "white", margin: 0 }}>
-              Dr. Arvind Kumar
+              {session?.user?.name ? `Dr. ${session.user.name.replace(/^(Dr\.?\s*)/i, "").trim()}` : "Loading..."}
             </h2>
             <p style={{ fontSize: 11, color: "rgba(255,255,255,.45)", marginTop: 2 }}>
-              {T("सामान्य चिकित्सक · नाभा सिविल अस्पताल", "General Physician · Nabha Civil Hospital")}
+              {T("सामान्य चिकित्सक", (session?.user as any)?.specialization || "General Physician")} · {(session?.user as any)?.hospital || "Hospital"}
             </p>
           </div>
 

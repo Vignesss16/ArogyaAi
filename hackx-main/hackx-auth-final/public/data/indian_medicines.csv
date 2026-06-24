@@ -1,0 +1,74 @@
+Medicine_Name,Composition,Manufacturer
+Paracetamol,Paracetamol 500mg,Generic
+Amoxicillin,Amoxicillin 500mg,Generic
+Azithromycin,Azithromycin 500mg,Generic
+Ibuprofen,Ibuprofen 400mg,Generic
+Aspirin,Aspirin 75mg,Generic
+Cetirizine,Cetirizine 10mg,Generic
+Pantoprazole,Pantoprazole 40mg,Generic
+Metformin,Metformin 500mg,Generic
+Atorvastatin,Atorvastatin 10mg,Generic
+Amlodipine,Amlodipine 5mg,Generic
+Losartan,Losartan 50mg,Generic
+Omeprazole,Omeprazole 20mg,Generic
+Dolo 650,Paracetamol 650mg,Micro Labs Ltd
+Crocin,Paracetamol 500mg,GSK
+Calpol,Paracetamol 500mg,GSK
+Ecosprin,Aspirin 75mg,USV Ltd
+Brilinta,Ticagrelor 90mg,AstraZeneca
+Briluta,Ticagrelor 90mg,Generic
+Flavedon MR,Trimetazidine 35mg,Serdia Pharmaceuticals
+Flawedon MR,Trimetazidine 35mg,Generic
+Glycomet GP,Metformin + Glimepiride,USV Ltd
+Pan 40,Pantoprazole 40mg,Alkem Laboratories
+Pan D,Pantoprazole + Domperidone,Alkem Laboratories
+Telma 40,Telmisartan 40mg,Glenmark Pharmaceuticals
+Rosuvas,Rosuvastatin 10mg,Sun Pharmaceutical
+Thyronorm,Thyroxine 50mcg,Abbott
+Augmentin,Amoxicillin + Clavulanic Acid,GSK
+Allegra,Fexofenadine 120mg,Sanofi India
+Shelcal,Calcium + Vitamin D3,Torrent Pharmaceuticals
+Zincovit,Multivitamins + Zinc,Apex Laboratories
+Gelusil,Antacid Liquid,Pfizer
+Digene,Antacid Tablet,Abbott
+Vicks Action 500,Paracetamol + Diphenhydramine,P&G
+Cheston Cold,Cetirizine + Paracetamol,Cipla
+Okacet,Cetirizine 10mg,Cipla
+Levocet,Levocetirizine 5mg,Hetero
+Montair LC,Montelukast + Levocetirizine,Cipla
+Zerodol SP,Aceclofenac + Serratiopeptidase,Ipca Laboratories
+Combiflam,Ibuprofen + Paracetamol,Sanofi India
+Meftal Spas,Mefenamic Acid + Dicyclomine,Blue Cross
+Cyclopam,Dicyclomine + Paracetamol,Indoco Remedies
+O2,Ofloxacin + Ornidazole,Medley Pharmaceuticals
+Norflox TZ,Norfloxacin + Tinidazole,Cipla
+Eldoper,Loperamide 2mg,Micro Labs
+Eno,Fruit Salt Antacid,GSK
+Pudin Hara,Mint Extracts,Dabur
+Voveran,Diclofenac 50mg,Novartis
+Volini,Diclofenac Gel,Sun Pharma
+Moov,Pain Relief Cream,Reckitt Benckiser
+Iodex,Pain Balm,GSK
+Betadine,Povidone Iodine,Win-Medicare
+Soframycin,Framycetin Cream,Sanofi India
+Dettol,Antiseptic Liquid,Reckitt Benckiser
+Savlon,Antiseptic Liquid,ITC
+Candid B,Clotrimazole + Beclomethasone,Glenmark
+Dermadew,Aloe Vera Lotion,Hegde & Hegde
+Clobetasol,Clobetasol Propionate,Generic
+Ketomac,Ketoconazole Shampoo,Macleods
+Nizral,Ketoconazole Soap,J&J
+Selsun,Selenium Sulfide Shampoo,Abbott
+Ascoril,Terbutaline + Bromhexine,Glenmark
+Benadryl,Diphenhydramine Cough Syrup,J&J
+Corex,Chlorpheniramine Cough Syrup,Pfizer
+Grilinctus,Dextromethorphan Syrup,Franco-Indian
+Torex,Herbal Cough Syrup,Torque
+Alex,Dextromethorphan Syrup,Glenmark
+Bro-Zedex,Terbutaline + Bromhexine,Wockhardt
+Asthalin,Salbutamol Inhaler,Cipla
+Budecort,Budesonide Inhaler,Cipla
+Duolin,Levosalbutamol + Ipratropium,Cipla
+Foracort,Formoterol + Budesonide,Cipla
+Seroflo,Salmeterol + Fluticasone,Cipla
+Levolin,Levosalbutamol Inhaler,Cipla

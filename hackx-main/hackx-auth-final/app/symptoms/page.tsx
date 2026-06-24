@@ -44,14 +44,18 @@ export default function SymptomsPage() {
       localStorage.removeItem("symptomDetailData");
       localStorage.removeItem("triageResult");
       localStorage.removeItem("uploadedRecords");
+      localStorage.removeItem("customSymptoms");
     }
   }, []);
+
+  const [customSymptoms, setCustomSymptoms] = useState("");
 
   const toggle = (id: string) => setSelected(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
 
   const goToDetail = () => {
-    if (selected.length === 0) return;
+    if (selected.length === 0 && customSymptoms.trim().length === 0) return;
     localStorage.setItem("selectedSymptoms", JSON.stringify(selected));
+    localStorage.setItem("customSymptoms", customSymptoms);
     router.push("/symptom-detail");
   };
 
@@ -72,7 +76,16 @@ export default function SymptomsPage() {
           </div>
         </div>
         <div style={{ background: "#EBF4FD", borderRadius: 10, padding: "8px 12px", fontSize: 12, color: C.primary, margin: "8px 16px 0" }}>
-          💡 {t("लक्षणों पर टैप करें — कोई टाइपिंग की ज़रूरत नहीं", "Tap icons — no typing required")}
+          💡 {t("लक्षणों पर टैप करें या नीचे लिखें", "Tap icons or describe below")}
+        </div>
+        
+        <div style={{ padding: "10px 16px 0" }}>
+          <textarea
+            value={customSymptoms}
+            onChange={(e) => setCustomSymptoms(e.target.value)}
+            placeholder={t("मुझे बुखार और सिरदर्द है...", "I have fever and headache...")}
+            style={{ width: "100%", height: 80, borderRadius: 12, border: `1px solid ${C.border}`, padding: "12px", fontSize: 14, fontFamily: "inherit", resize: "none", outline: "none", color: C.text }}
+          />
         </div>
         {/* Symptom grid */}
         <div style={{ flex: 1, overflowY: "auto", padding: "10px 16px 0" }}>
@@ -94,11 +107,11 @@ export default function SymptomsPage() {
         </div>
         {/* Bottom bar */}
         <div style={{ background: C.card, borderTop: `2px solid ${C.border}`, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ background: selected.length > 0 ? "#EBF4FD" : C.bg, borderRadius: 20, padding: "6px 14px", fontSize: 13, fontWeight: 700, color: selected.length > 0 ? C.primary : C.muted, flexShrink: 0, minWidth: 64, textAlign: "center" }}>
+          <div style={{ background: (selected.length > 0 || customSymptoms.length > 0) ? "#EBF4FD" : C.bg, borderRadius: 20, padding: "6px 14px", fontSize: 13, fontWeight: 700, color: (selected.length > 0 || customSymptoms.length > 0) ? C.primary : C.muted, flexShrink: 0, minWidth: 64, textAlign: "center" }}>
             {selected.length} {t("चुने", "sel")}
           </div>
-          <button onClick={goToDetail} disabled={selected.length === 0}
-            style={{ flex: 1, padding: "13px", borderRadius: 14, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 15, background: `linear-gradient(135deg,${C.primary},${C.primaryDark})`, color: "white", opacity: selected.length === 0 ? .5 : 1, boxShadow: "0 4px 16px rgba(27,108,168,.4)" }}>
+          <button onClick={goToDetail} disabled={selected.length === 0 && customSymptoms.trim().length === 0}
+            style={{ flex: 1, padding: "13px", borderRadius: 14, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 15, background: `linear-gradient(135deg,${C.primary},${C.primaryDark})`, color: "white", opacity: (selected.length === 0 && customSymptoms.trim().length === 0) ? .5 : 1, boxShadow: "0 4px 16px rgba(27,108,168,.4)" }}>
             {t("आगे बढ़ें", "Continue")} →
           </button>
         </div>

@@ -11,6 +11,7 @@ async function sendSMS(
 ): Promise<{ success: boolean; error?: string }> {
   const apiKey = process.env.TWOFACTOR_API_KEY;
 
+
   if (!apiKey) {
     // Dev mode — log OTP to console, don't attempt to send
     console.warn("[OTP] No TWOFACTOR_API_KEY set. Dev OTP:", otp);
@@ -32,17 +33,20 @@ async function sendSMS(
 
 export async function POST(req: NextRequest) {
   try {
-    const { phone } = await req.json();
+    const { identifier } = await req.json();
 
-    if (!phone || !/^\d{10}$/.test(phone)) {
+    const isPhone = /^\d{10}$/.test(identifier);
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+
+    if (!identifier || (!isPhone && !isEmail)) {
       return NextResponse.json(
-        { error: "Enter valid 10-digit number" },
+        { error: "Enter valid 10-digit number or email address" },
         { status: 400 }
       );
     }
 
     // Rate-limit: don't allow a new OTP if one was sent within the last 60s
-    const existing = await getOTP(phone);
+    const existing = await getOTP(identifier);
     if (existing && existing.expiresAt.getTime() - Date.now() > 4 * 60 * 1000) {
       return NextResponse.json(
         { error: "OTP already sent. Wait 60 seconds." },
@@ -51,16 +55,22 @@ export async function POST(req: NextRequest) {
     }
 
     const otp = generateOTP();
-    await storeOTP(phone, otp);
+    await storeOTP(identifier, otp);
 
-    const result = await sendSMS(phone, otp);
+    let result: { success: boolean; error?: string } = { success: true, error: "" };
+    if (isPhone) {
+      result = await sendSMS(identifier, otp);
+    } else {
+      // Simulate Email OTP (in a real app, use SendGrid/Resend)
+      console.log(`[Email Mock] Sending OTP ${otp} to ${identifier}`);
+    }
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 500 });
     }
 
-    const isDev =
-      process.env.NODE_ENV === "development" && !process.env.TWOFACTOR_API_KEY;
+    const isDev = process.env.NODE_ENV === "development" && !process.env.TWOFACTOR_API_KEY;
+    // Always return devOtp in dev environment for easy testing, even for emails
     return NextResponse.json({
       success: true,
       ...(isDev && { devOtp: otp }),

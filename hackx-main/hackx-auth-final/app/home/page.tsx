@@ -28,6 +28,8 @@ export default function HomePage() {
   const [incomingCallType, setIncomingCallType] = useState<"video" | "audio" | null>(null);
   const [showCallBanner, setShowCallBanner] = useState(false);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [consultationCount, setConsultationCount] = useState(0);
+  const [doctorsCount, setDoctorsCount] = useState(2);
   // FIX: stable clientId stored in sessionStorage so it survives SSE reconnects
   // without changing — prevents the patient from receiving their own messages.
   const patientClientIdRef = useRef<string>(
@@ -110,6 +112,34 @@ export default function HomePage() {
       pusher.unsubscribe(channelName);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // Fetch dynamic stats (consultations and doctors online)
+  useEffect(() => {
+    if (!user) return;
+    
+    // Fetch personal consultations history
+    const identifier = (user as any).phone || (user as any)._id;
+    if (identifier) {
+      fetch(`/api/consultations/my?identifier=${encodeURIComponent(identifier)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.consultations) {
+            setConsultationCount(data.consultations.length);
+          }
+        })
+        .catch(err => console.error("Error fetching consultations:", err));
+    }
+
+    // Fetch available doctors
+    fetch("/api/admin/doctors")
+      .then(res => res.json())
+      .then(data => {
+        if (data.doctors) {
+          setDoctorsCount(data.doctors.length);
+        }
+      })
+      .catch(err => console.error("Error fetching doctors:", err));
   }, [user]);
 
   const t = (hi: string, en: string) => (lang === "hi" ? hi : en);
@@ -412,9 +442,9 @@ export default function HomePage() {
             {/* Stats */}
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
               {[
-                { n: String(pastVisits), l: t("पिछली विज़िट", "Past Visits") },
-                { n: "2", l: t("डॉक्टर उपलब्ध", "Doctors") },
-                { n: "3", l: t("पास की दुकान", "Pharmacies") },
+                { n: String(pastVisits), l: t("AI विज़िट", "AI Scans") },
+                { n: String(consultationCount), l: t("परामर्श", "Consults") },
+                { n: String(doctorsCount), l: t("डॉक्टर उपलब्ध", "Doctors Online") },
               ].map((s, i) => (
                 <div
                   key={i}

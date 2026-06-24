@@ -30,13 +30,11 @@ function PatientHistoryContent() {
     setLoading(true);
 
     Promise.all([
-      fetch(`/api/patients`).then(r => r.json()).then(d => {
-        const p = (d.patients || []).find((pt: any) => pt.phone === patientPhone);
-        setPatient(p || null);
+      fetch(`/api/patients?phone=${patientPhone}`).then(r => r.json()).then(d => {
+        setPatient(d.patient || null);
       }),
-      fetch(`/api/asha/visits`).then(r => r.json()).then(d => {
-        const v = (d.visits || []).filter((visit: any) => visit.patientPhone === patientPhone);
-        setVisits(v);
+      fetch(`/api/asha/visits?patientPhone=${patientPhone}`).then(r => r.json()).then(d => {
+        setVisits(d.visits || []);
       }),
       fetch(`/api/blood-tests?patientPhone=${patientPhone}`).then(r => r.json()).then(d => {
         setBloodTests(d.tests || []);
@@ -164,8 +162,11 @@ function PatientHistoryContent() {
                           )}
                         </div>
                         <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>
-                          📅 {new Date(t.testDate).toLocaleDateString()} · 👤 {t.submittedByName}
+                          👤 Patient: {t.patientName || patient?.name} · 📅 {new Date(t.testDate).toLocaleDateString()}
                           {t.labName && ` · 🏥 ${t.labName}`}
+                        </div>
+                        <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                          👩‍⚕️ Submitted by: {t.submittedByName}
                         </div>
                         {t.reviewedNotes && (
                           <div style={{ fontSize: 12, color: C.primary, marginTop: 6, background: "#EBF4FD", padding: "8px 10px", borderRadius: 8 }}>
@@ -186,7 +187,8 @@ function PatientHistoryContent() {
                   ) : (
                     vitalSigns.map((v, i) => (
                       <div key={i} style={{ background: C.card, borderRadius: 12, padding: 14, marginBottom: 10, border: `1px solid ${C.border}` }}>
-                        <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>📅 {new Date(v.recordedAt).toLocaleDateString()} · 👤 {v.recordedByName}</div>
+                        <div style={{ fontSize: 12, color: C.muted, marginBottom: 4 }}>👤 Patient: {v.patientName || patient?.name} · 📅 {new Date(v.recordedAt).toLocaleDateString()}</div>
+                        <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>👩‍⚕️ Recorded by: {v.recordedByName}</div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                           {v.bpSystolic && v.bpDiastolic && <div style={{ fontSize: 13 }}>❤️ BP: <b>{v.bpSystolic}/{v.bpDiastolic}</b> mmHg</div>}
                           {v.heartRate && <div style={{ fontSize: 13 }}>💓 HR: <b>{v.heartRate}</b> bpm</div>}

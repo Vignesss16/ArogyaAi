@@ -11,7 +11,7 @@ const C = {
   border: "#DDE3EC", orange: "#E67E22", red: "#C0392B", green: "#1E8449",
 };
 
-type Step = "credentials" | "otp" | "register";
+type Step = "credentials" | "otp" | "register" | "forgot_password" | "reset_password";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,6 +22,7 @@ export default function LoginPage() {
   // Credentials
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // OTP
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
@@ -30,17 +31,44 @@ export default function LoginPage() {
 
   // Registration
   const [reg, setReg] = useState({ name: "", age: "", gender: "", village: "", conditions: "", bloodGroup: "" });
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
+
+  // Forgot Password
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const t = (hi: string, en: string) => lang === "hi" ? hi : en;
 
+  // Restore registration inputs from localStorage to prevent data loss on navigation/refresh
   useEffect(() => {
     const storedLang = localStorage.getItem("lang") || "hi";
     setLang(storedLang);
-    if (isAuthenticated) router.push("/home");
+    if (isAuthenticated) {
+      localStorage.removeItem("pending_reg");
+      router.push("/home");
+    } else {
+      const savedReg = localStorage.getItem("pending_reg");
+      if (savedReg) {
+        try {
+          const parsed = JSON.parse(savedReg);
+          if (parsed.reg) setReg(parsed.reg);
+          if (parsed.phone) setPhone(parsed.phone);
+          if (parsed.password) setPassword(parsed.password);
+          if (parsed.step) setStep(parsed.step);
+        } catch { }
+      }
+    }
   }, [isAuthenticated, router]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      localStorage.setItem("pending_reg", JSON.stringify({ reg, phone, password, step }));
+    }
+  }, [reg, phone, password, step, isAuthenticated]);
 
   // Countdown timer for OTP resend
   useEffect(() => {
@@ -79,30 +107,30 @@ export default function LoginPage() {
     }
   };
 
-   const handleLogin = async () => {
-  setError("");
-  if (!phone || phone.length !== 10) {
-    setError(t("10 अंकों का फोन नंबर दर्ज करें", "Enter a valid 10-digit number"));
-    return;
-  }
-  if (!password) {
-    setError(t("पासवर्ड दर्ज करें", "Enter your password"));
-    return;
-  }
-  setLoading(true);
-  try {
-    const result = await login(phone, password);
-    if (result.success) {
-      router.push("/home");
-    } else {
-      setError(result.error || t("लॉगिन विफल", "Login failed"));
+  const handleLogin = async () => {
+    setError("");
+    if (!phone || phone.length !== 10) {
+      setError(t("10 अंकों का फोन नंबर दर्ज करें", "Enter a valid 10-digit number"));
+      return;
     }
-  } catch {
-    setError(t("नेटवर्क त्रुटि", "Network error"));
-  } finally {
-    setLoading(false);
-  }
-};
+    if (!password) {
+      setError(t("पासवर्ड दर्ज करें", "Enter your password"));
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await login(phone, password);
+      if (result.success) {
+        router.push("/home");
+      } else {
+        setError(result.error || t("लॉगिन विफल", "Login failed"));
+      }
+    } catch {
+      setError(t("नेटवर्क त्रुटि", "Network error"));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ── Verify OTP & Login ───────────────────────────────────────────────────
   const handleVerifyAndLogin = async () => {
@@ -196,7 +224,69 @@ export default function LoginPage() {
     }
   };
 
+  // ── Forgot Password Flow ───────────────────────────────────────────────
+  const handleForgotPasswordSendOtp = async () => {
+    setError("");
+    if (!phone || phone.length !== 10) {
+      setError(t("10 अंकों का फोन नंबर दर्ज करें", "Enter a valid 10-digit number"));
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: phone }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error); return; }
+      setOtpTimer(60);
+      setDevOtp(data.devOtp ?? "");
+      setStep("reset_password");
+    } catch {
+      setError(t("नेटवर्क त्रुटि", "Network error"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    setError("");
+    const otpValue = otp.join("");
+    if (otpValue.length !== 6) {
+      setError(t("6 अंकों का OTP दर्ज करें", "Enter the 6-digit OTP"));
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError(t("पासवर्ड कम से कम 6 अक्षरों का होना चाहिए", "Password must be at least 6 characters"));
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: phone, role: "patient", otp: otpValue, newPassword }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStep("credentials");
+        setPassword("");
+        setNewPassword("");
+        setOtp(["", "", "", "", "", ""]);
+        alert(t("पासवर्ड सफलतापूर्वक बदल दिया गया!", "Password reset successfully!"));
+      } else {
+        setError(data.error || t("पासवर्ड रीसेट विफल", "Password reset failed"));
+      }
+    } catch {
+      setError(t("नेटवर्क त्रुटि", "Network error"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const isRegisterFlow = step === "register" || (step === "otp" && !!reg.name);
+  const isResetFlow = step === "reset_password";
 
   return (
     <div style={{ background: "#0d1520", minHeight: "100vh", display: "flex", justifyContent: "center" }}>
@@ -209,8 +299,8 @@ export default function LoginPage() {
             {step === "otp"
               ? t("OTP सत्यापन", "OTP Verification")
               : step === "register"
-              ? t("नया खाता बनाएं", "Create Account")
-              : t("नमस्ते\nअपना नंबर दर्ज करें", "Hello\nEnter your mobile number")}
+                ? t("नया खाता बनाएं", "Create Account")
+                : t("नमस्ते\nअपना नंबर दर्ज करें", "Hello\nEnter your mobile number")}
           </h2>
           <p style={{ fontSize: 13, color: "rgba(255,255,255,.7)", marginTop: 4 }}>
             {step === "otp"
@@ -248,15 +338,29 @@ export default function LoginPage() {
 
               {/* Password */}
               <div style={{ marginBottom: 18 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: C.muted, marginBottom: 6, display: "block" }}>
-                  🔐 {t("पासवर्ड", "Password")}
-                </label>
-                <input
-                  style={{ width: "100%", padding: "14px 16px", border: `2px solid ${C.border}`, borderRadius: 14, fontSize: 15, fontFamily: "inherit", background: C.card, color: C.text, outline: "none", boxSizing: "border-box" }}
-                  type="password" value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  disabled={loading} placeholder={t("अपना पासवर्ड दर्ज करें", "Enter your password")}
-                />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: C.muted, display: "block" }}>
+                    🔐 {t("पासवर्ड", "Password")}
+                  </label>
+                  <button type="button" onClick={() => { setStep("forgot_password"); setError(""); setOtpTimer(0); setDevOtp(""); }} style={{ background: "none", border: "none", padding: 0, color: C.primary, fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}>
+                    {t("भूल गए?", "Forgot?")}
+                  </button>
+                </div>
+                <div style={{ position: "relative" }}>
+                  <input
+                    style={{ width: "100%", padding: "14px 40px 14px 16px", border: `2px solid ${C.border}`, borderRadius: 14, fontSize: 15, fontFamily: "inherit", background: C.card, color: C.text, outline: "none", boxSizing: "border-box" }}
+                    type={showPassword ? "text" : "password"} value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    disabled={loading} placeholder={t("अपना पासवर्ड दर्ज करें", "Enter your password")}
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: C.muted, cursor: "pointer", display: "flex", alignItems: "center" }}>
+                    {showPassword ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+                    )}
+                  </button>
+                </div>
               </div>
 
               <button onClick={handleLogin} disabled={loading} style={{ width: "100%", padding: "16px 24px", borderRadius: 14, border: "none", cursor: loading ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 16, background: `linear-gradient(135deg,${C.primary},${C.primaryDark})`, color: "white", boxShadow: "0 4px 16px rgba(27,108,168,.4)", opacity: loading ? 0.6 : 1 }}>
@@ -269,11 +373,39 @@ export default function LoginPage() {
             </>
           )}
 
-          {/* ── STEP 2: OTP Entry ─────────────────────────────── */}
-          {step === "otp" && (
+          {/* ── STEP: Forgot Password Phone Input ──────────────────────── */}
+          {step === "forgot_password" && (
             <>
-              <p style={{ textAlign: "center", fontSize: 14, color: C.muted, marginBottom: 20 }}>
-                {t("नीचे 6 अंकों का OTP दर्ज करें", "Enter the 6-digit OTP below")}
+              <div style={{ background: "#FEF9E7", borderRadius: 10, padding: "9px 12px", marginBottom: 12, border: "1px solid #F4D03F", fontSize: 13, color: "#7D6608" }}>
+                {t("अपना मोबाइल नंबर दर्ज करें। हम आपको एक OTP भेजेंगे।", "Enter your mobile number. We'll send you an OTP.")}
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 6, display: "block" }}>📱 {t("मोबाइल नंबर", "Mobile Number")}</label>
+                <div style={{ display: "flex", alignItems: "center", border: `2px solid ${C.border}`, borderRadius: 14, overflow: "hidden", background: C.card }}>
+                  <span style={{ background: C.bg, padding: "14px", fontSize: 15, fontWeight: 700, color: C.muted, borderRight: `2px solid ${C.border}` }}>+91</span>
+                  <input style={{ flex: 1, border: "none", outline: "none", fontSize: 18, fontWeight: 700, padding: "14px", background: "transparent", color: C.text }} type="tel" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} maxLength={10} disabled={loading} placeholder="0000000000" />
+                </div>
+              </div>
+
+              <button onClick={handleForgotPasswordSendOtp} disabled={loading || phone.length !== 10} style={{ width: "100%", padding: "16px 24px", borderRadius: 14, border: "none", cursor: (loading || phone.length !== 10) ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 16, background: (loading || phone.length !== 10) ? "#ccc" : `linear-gradient(135deg,${C.primary},${C.primaryDark})`, color: "white" }}>
+                {loading ? "..." : `📲 ${t("OTP भेजें", "Send OTP")}`}
+              </button>
+
+              <button onClick={() => { setStep("credentials"); setError(""); }} disabled={loading} style={{ background: "none", border: "none", color: C.primary, fontSize: 13, fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginTop: 10, display: "block", width: "100%", textAlign: "center" }}>
+                ← {t("वापस लॉगिन पर जाएं", "Back to Login")}
+              </button>
+            </>
+          )}
+
+          {/* ── STEP 2: OTP Entry / Reset Password ─────────────────────────────── */}
+          {(step === "otp" || step === "reset_password") && (
+            <>
+              <h2 style={{ textAlign: "center", color: C.text, marginBottom: 8, fontSize: 24, fontWeight: 800 }}>
+                {isResetFlow ? t("नया पासवर्ड", "Reset Password") : t("सत्यापन", "Verification")}
+              </h2>
+              <p style={{ textAlign: "center", color: C.muted, marginBottom: 24, fontSize: 15 }}>
+                {t(`हमने +91 ${phone} पर एक OTP भेजा है`, `We sent an OTP to +91 ${phone}`)}
               </p>
 
               {/* 6-box OTP input */}
@@ -309,12 +441,28 @@ export default function LoginPage() {
                 </div>
               )}
 
+              {isResetFlow && (
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 6, display: "block" }}>🔐 {t("नया पासवर्ड", "New Password")}</label>
+                  <div style={{ display: "flex", border: `2px solid ${C.border}`, borderRadius: 12, overflow: "hidden", background: C.card }}>
+                    <input style={{ flex: 1, border: "none", outline: "none", fontSize: 15, padding: "12px 14px", background: "transparent", color: C.text }} type={showNewPassword ? "text" : "password"} value={newPassword} onChange={e => setNewPassword(e.target.value)} disabled={loading} placeholder={t("नया पासवर्ड दर्ज करें", "Enter new password")} />
+                    <button type="button" onClick={() => setShowNewPassword(s => !s)} style={{ background: "none", border: "none", padding: "0 14px", cursor: "pointer", display: "flex", alignItems: "center", color: C.muted }}>
+                      {showNewPassword ? (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                      ) : (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <button
-                onClick={isRegisterFlow ? handleVerifyAndRegister : handleVerifyAndLogin}
-                disabled={loading || otp.join("").length !== 6}
+                onClick={isResetFlow ? handleResetPassword : (isRegisterFlow ? handleVerifyAndRegister : handleVerifyAndLogin)}
+                disabled={loading || otp.join("").length !== 6 || (isResetFlow && newPassword.length < 6)}
                 style={{ width: "100%", padding: "16px", borderRadius: 14, border: "none", cursor: loading ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 16, background: `linear-gradient(135deg,${C.primary},${C.primaryDark})`, color: "white", opacity: (loading || otp.join("").length !== 6) ? 0.6 : 1, marginBottom: 12 }}
               >
-                {loading ? "..." : `✓ ${t("सत्यापित करें", "Verify & Continue")}`}
+                {loading ? "..." : `✓ ${isResetFlow ? t("पासवर्ड रीसेट करें", "Reset Password") : t("सत्यापित करें", "Verify & Continue")}`}
               </button>
 
               {/* Resend */}
@@ -325,7 +473,7 @@ export default function LoginPage() {
                   </p>
                 ) : (
                   <button
-                    onClick={isRegisterFlow ? handleRegisterWithOtp : handleSendOtp}
+                    onClick={isResetFlow ? handleForgotPasswordSendOtp : (isRegisterFlow ? handleRegisterWithOtp : handleSendOtp)}
                     disabled={loading}
                     style={{ background: "none", border: "none", color: C.primary, fontSize: 13, fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}
                   >
@@ -334,13 +482,38 @@ export default function LoginPage() {
                 )}
               </div>
 
-              <button onClick={() => { setStep(isRegisterFlow ? "register" : "credentials"); setOtp(["","","","","",""]); setError(""); }} style={{ background: "none", border: "none", color: C.muted, fontSize: 13, cursor: "pointer", textDecoration: "underline", marginTop: 8, display: "block", width: "100%", textAlign: "center" }}>
-                ← {t("वापस जाएं", "Go back")}
+              <button onClick={() => { setStep(isRegisterFlow ? "register" : "credentials"); setOtp(["", "", "", "", "", ""]); setError(""); }} style={{ background: "none", border: "none", color: C.muted, fontSize: 13, cursor: "pointer", textDecoration: "underline", marginTop: 8, display: "block", width: "100%", textAlign: "center" }}>
+                ← {t("वापस लॉगिन पर जाएं", "Back to Login")}
               </button>
             </>
           )}
 
-          {/* ── STEP: Register Form ───────────────────────────── */}
+          {/* ── STEP: Forgot Password Phone Input ──────────────────────── */}
+          {step === "forgot_password" && (
+            <>
+              <div style={{ background: "#FEF9E7", borderRadius: 10, padding: "9px 12px", marginBottom: 12, border: "1px solid #F4D03F", fontSize: 13, color: "#7D6608" }}>
+                {t("अपना मोबाइल नंबर दर्ज करें। हम आपको एक OTP भेजेंगे।", "Enter your mobile number. We'll send you an OTP.")}
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 6, display: "block" }}>📱 {t("मोबाइल नंबर", "Mobile Number")}</label>
+                <div style={{ display: "flex", alignItems: "center", border: `2px solid ${C.border}`, borderRadius: 14, overflow: "hidden", background: C.card }}>
+                  <span style={{ background: C.bg, padding: "14px", fontSize: 15, fontWeight: 700, color: C.muted, borderRight: `2px solid ${C.border}` }}>+91</span>
+                  <input style={{ flex: 1, border: "none", outline: "none", fontSize: 18, fontWeight: 700, padding: "14px", background: "transparent", color: C.text }} type="tel" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} maxLength={10} disabled={loading} placeholder="0000000000" />
+                </div>
+              </div>
+
+              <button onClick={handleForgotPasswordSendOtp} disabled={loading || phone.length !== 10} style={{ width: "100%", padding: "16px 24px", borderRadius: 14, border: "none", cursor: (loading || phone.length !== 10) ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 16, background: (loading || phone.length !== 10) ? "#ccc" : `linear-gradient(135deg,${C.primary},${C.primaryDark})`, color: "white" }}>
+                {loading ? "..." : `📲 ${t("OTP भेजें", "Send OTP")}`}
+              </button>
+
+              <button onClick={() => { setStep("credentials"); setError(""); }} disabled={loading} style={{ background: "none", border: "none", color: C.primary, fontSize: 13, fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginTop: 10, display: "block", width: "100%", textAlign: "center" }}>
+                ← {t("वापस लॉगिन पर जाएं", "Back to Login")}
+              </button>
+            </>
+          )}
+
+          {/* ── STEP 3: Register Form ─────────────────────────────── */}
           {step === "register" && (
             <>
               <div style={{ background: "#FEF9E7", borderRadius: 10, padding: "9px 12px", marginBottom: 12, border: "1px solid #F4D03F", fontSize: 13, color: "#7D6608" }}>
@@ -359,15 +532,24 @@ export default function LoginPage() {
               {/* Password */}
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 6, display: "block" }}>🔐 {t("पासवर्ड", "Password")}</label>
-                <input style={{ width: "100%", padding: "12px 14px", border: `2px solid ${C.border}`, borderRadius: 12, fontSize: 15, fontFamily: "inherit", background: C.card, color: C.text, outline: "none", boxSizing: "border-box" }} type="password" value={password} onChange={e => setPassword(e.target.value)} disabled={loading} placeholder={t("पासवर्ड बनाएं", "Create a password")} />
+                <div style={{ display: "flex", border: `2px solid ${C.border}`, borderRadius: 12, overflow: "hidden", background: C.card }}>
+                  <input style={{ flex: 1, border: "none", outline: "none", fontSize: 15, padding: "12px 14px", background: "transparent", color: C.text }} type={showRegPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} disabled={loading} placeholder={t("पासवर्ड बनाएं", "Create a password")} />
+                  <button type="button" onClick={() => setShowRegPassword(s => !s)} style={{ background: "none", border: "none", padding: "0 14px", cursor: "pointer", display: "flex", alignItems: "center", color: C.muted }}>
+                    {showRegPassword ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" /><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" /><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" /><line x1="2" y1="2" x2="22" y2="22" /></svg>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {[
-                { key: "name",       label: t("👤 पूरा नाम", "👤 Full Name"),          ph: t("आपका नाम", "Your name"),          type: "text"   },
-                { key: "age",        label: t("🎂 उम्र", "🎂 Age"),                    ph: "25",                                type: "number" },
-                { key: "village",    label: t("🏘️ गाँव", "🏘️ Village"),               ph: t("आपका गाँव", "Your village"),      type: "text"   },
+                { key: "name", label: t("👤 पूरा नाम", "👤 Full Name"), ph: t("आपका नाम", "Your name"), type: "text" },
+                { key: "age", label: t("🎂 उम्र", "🎂 Age"), ph: "25", type: "number" },
+                { key: "village", label: t("🏘️ गाँव", "🏘️ Village"), ph: t("आपका गाँव", "Your village"), type: "text" },
                 { key: "conditions", label: t("💊 पुरानी बीमारियाँ", "💊 Existing Conditions"), ph: t("डायबिटीज़, BP...", "Diabetes, BP..."), type: "text" },
-                { key: "bloodGroup", label: t("🩸 रक्त समूह", "🩸 Blood Group"),       ph: "B+",                                type: "text"   },
+                { key: "bloodGroup", label: t("🩸 रक्त समूह", "🩸 Blood Group"), ph: "B+", type: "text" },
               ].map(f => (
                 <div key={f.key} style={{ marginBottom: 12 }}>
                   <label style={{ fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 6, display: "block" }}>{f.label}</label>
@@ -385,7 +567,23 @@ export default function LoginPage() {
                 </select>
               </div>
 
-              <button onClick={handleRegisterWithOtp} disabled={loading} style={{ width: "100%", padding: "16px", borderRadius: 14, border: "none", cursor: loading ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 16, background: `linear-gradient(135deg,${C.primary},${C.primaryDark})`, color: "white", opacity: loading ? 0.6 : 1 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 16 }}>
+                <input
+                  type="checkbox"
+                  id="accept-terms"
+                  checked={acceptTerms}
+                  onChange={e => setAcceptTerms(e.target.checked)}
+                  style={{ width: 18, height: 18, cursor: "pointer", marginTop: 2 }}
+                />
+                <label htmlFor="accept-terms" style={{ fontSize: 12, color: C.text, cursor: "pointer", lineHeight: 1.4 }}>
+                  {t("मैं नियम और शर्तों को स्वीकार करता हूँ। ", "I accept the ")}
+                  <a href="/terms?closeable=true" target="_blank" rel="noopener noreferrer" style={{ color: C.primary, fontWeight: 700, textDecoration: "underline" }}>
+                    {t("नियम और शर्तें पढ़ें", "Terms & Conditions")}
+                  </a>
+                </label>
+              </div>
+
+              <button onClick={handleRegisterWithOtp} disabled={loading || !acceptTerms} style={{ width: "100%", padding: "16px", borderRadius: 14, border: "none", cursor: (loading || !acceptTerms) ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 16, background: (loading || !acceptTerms) ? "#ccc" : `linear-gradient(135deg,${C.primary},${C.primaryDark})`, color: "white", opacity: (loading || !acceptTerms) ? 0.6 : 1 }}>
                 {loading ? "..." : `📲 ${t("OTP से सत्यापित करें", "Verify with OTP")}`}
               </button>
 
@@ -407,10 +605,10 @@ export default function LoginPage() {
                 style={{ width: "100%", padding: "14px", borderRadius: 14, border: `2px solid ${C.border}`, background: C.card, color: C.text, fontWeight: 700, fontSize: 14, cursor: "pointer", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
               >
                 <svg width="20" height="20" viewBox="0 0 48 48">
-                  <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
-                  <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
-                  <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
-                  <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/>
+                  <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
+                  <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" />
+                  <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
+                  <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" />
                 </svg>
                 {t("Google से लॉगिन करें", "Continue with Google")}
               </button>
@@ -427,6 +625,13 @@ export default function LoginPage() {
                 👩‍🌾 {t("ASHA कार्यकर्ता", "ASHA Worker")}
               </button>
             </>
+          )}
+          {step === "credentials" && (
+            <div style={{ textAlign: "center", marginTop: 24, paddingBottom: 24 }}>
+              <a href="/terms?closeable=true" target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: C.muted, textDecoration: "underline", cursor: "pointer" }}>
+                {t("नियम और शर्तें", "Terms & Conditions")}
+              </a>
+            </div>
           )}
         </div>
       </div>

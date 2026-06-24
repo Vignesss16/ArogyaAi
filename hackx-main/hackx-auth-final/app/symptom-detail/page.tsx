@@ -77,12 +77,14 @@ export default function SymptomDetailPage() {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [fileError, setFileError] = useState("");
+  const [customSymptoms, setCustomSymptoms] = useState("");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setLang(localStorage.getItem("lang") || "hi");
       const saved = localStorage.getItem("selectedSymptoms");
       if (saved) setPrimarySymptoms(JSON.parse(saved));
+      setCustomSymptoms(localStorage.getItem("customSymptoms") || "");
     }
   }, []);
 
@@ -168,6 +170,7 @@ export default function SymptomDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           symptoms: allSymptomNames,
+          customSymptoms,
           duration,
           diseases: selectedDiseases.map(id => DISEASES.find(d => d.id === id)?.en || id),
           otherDisease,

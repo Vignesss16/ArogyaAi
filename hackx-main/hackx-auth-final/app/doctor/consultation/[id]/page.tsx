@@ -1,6 +1,7 @@
 "use client";
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
 const VideoCallModal = dynamic(() => import("@/components/VideoCallModal"), { ssr: false });
 
@@ -43,7 +44,8 @@ export default function ConsultationDetailPage() {
   const [consultation, setConsultation] = useState<Consultation | null>(null);
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState("");
-  const [doctorName, setDoctorName] = useState("Dr. Aarogya");
+  const { data: session } = useSession();
+  const [doctorName, setDoctorName] = useState("");
   const [rxRows, setRxRows] = useState<RxRow[]>([emptyRow()]);
   const [diagnosis, setDiagnosis] = useState("");
   const [saving, setSaving] = useState(false);
@@ -59,7 +61,8 @@ export default function ConsultationDetailPage() {
         if (found) {
           setConsultation(found);
           setNotes(found.doctorNotes || "");
-          setDoctorName(found.doctorName || "Dr. Aarogya");
+          const defaultName = session?.user?.name ? `Dr. ${session.user.name.replace(/^(Dr\.?\s*)/i, "").trim()}` : "";
+          setDoctorName(found.doctorName || defaultName);
           if (found.prescription) {
             try {
               const parsed = JSON.parse(found.prescription);
@@ -75,7 +78,7 @@ export default function ConsultationDetailPage() {
       setLoading(false);
     };
     fetchConsultation();
-  }, [id]);
+  }, [id, session]);
 
   const updateRow = (i: number, field: keyof RxRow, val: string) => {
     setRxRows(rows => rows.map((r, idx) => idx === i ? { ...r, [field]: val } : r));

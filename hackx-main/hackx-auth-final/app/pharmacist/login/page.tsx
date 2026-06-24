@@ -10,7 +10,7 @@ const C = {
   border: "#DDE3EC", red: "#C0392B", orange: "#E67E22",
 };
 
-type Screen = "login" | "register_phone" | "register_otp" | "register_details";
+type Screen = "login" | "register_phone" | "register_otp" | "register_details" | "forgot_password" | "reset_password";
 
 export default function PharmacistLoginPage() {
   const router = useRouter();
@@ -40,6 +40,11 @@ export default function PharmacistLoginPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
+
+  // Forgot password state
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   const otpRef0 = useRef<HTMLInputElement>(null);
   const otpRef1 = useRef<HTMLInputElement>(null);
@@ -104,7 +109,7 @@ export default function PharmacistLoginPage() {
       const res = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: regPhone }),
+        body: JSON.stringify({ identifier: regPhone }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || T("OTP नहीं भेज सका", "Could not send OTP")); setLoading(false); return; }
@@ -173,6 +178,55 @@ export default function PharmacistLoginPage() {
     setLoading(false);
   };
 
+  const handleForgotPassword = async () => {
+    if (loginPhone.length !== 10) { setError(T("10 अंक का नंबर दर्ज करें", "Enter valid 10-digit number")); return; }
+    setError(""); setLoading(true);
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: loginPhone }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error); setLoading(false); return; }
+      if (data.devOtp) setDevOtp(data.devOtp);
+      setScreen("reset_password");
+      setTimer(60);
+    } catch {
+      setError(T("नेटवर्क त्रुटि", "Network error"));
+    }
+    setLoading(false);
+  };
+
+  const handleResetPassword = async () => {
+    setError("");
+    const entered = otp.join("");
+    if (entered.length !== 6) { setError(T("6 अंक का OTP दर्ज करें", "Enter 6-digit OTP")); return; }
+    if (newPassword.length < 6) { setError(T("कम से कम 6 अक्षर का पासवर्ड चुनें", "Choose a password with at least 6 characters")); return; }
+    
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: loginPhone, role: "pharmacist", otp: entered, newPassword }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setScreen("login");
+        setLoginPassword("");
+        setNewPassword("");
+        setOtp(["", "", "", "", "", ""]);
+        alert(T("पासवर्ड सफलतापूर्वक बदल दिया गया!", "Password reset successfully!"));
+      } else {
+        setError(data.error || T("पासवर्ड रीसेट विफल", "Password reset failed"));
+      }
+    } catch {
+      setError(T("नेटवर्क त्रुटि", "Network error"));
+    }
+    setLoading(false);
+  };
+
   const handleOtpKey = (val: string, idx: number) => {
     if (!/^\d?$/.test(val)) return;
     const next = [...otp]; next[idx] = val; setOtp(next);
@@ -200,7 +254,7 @@ export default function PharmacistLoginPage() {
 
   const Header = ({ title, sub, onBack }: { title: string; sub: string; onBack?: () => void }) => (
     <div style={{ background: `linear-gradient(135deg,${C.orange},${C.primaryDark})`, padding: "56px 24px 32px", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", right: -20, top: -20, fontSize: 120, opacity: .06 }}>💊</div>
+      <div style={{ position: "absolute", right: -20, top: -20, fontSize: 120, opacity: .06, pointerEvents: "none" }}>💊</div>
       {onBack && (
         <button onClick={onBack} style={{ background: "rgba(255,255,255,.15)", border: "none", borderRadius: 10, color: "white", padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", marginBottom: 16 }}>
           ← {T("वापस", "Back")}
@@ -226,56 +280,130 @@ export default function PharmacistLoginPage() {
 
   // ─── SCREEN: LOGIN ───────────────────────────────────────
 
-  if (screen === "login") return wrap(<>
-    <Header title={T("फार्मासिस्ट लॉगिन", "Pharmacist Login")} sub={T("अपनी दवाई की दुकान मैनेज करें", "Manage your medical store")} />
-    <div style={{ flex: 1, padding: "28px 20px" }}>
+  if (screen === "login" || screen === "forgot_password" || screen === "register_otp" || screen === "reset_password") return wrap(<>
+    <div style={{ padding: "60px 24px" }}>
       <ErrorBox />
+      {screen === "login" && (
+        <>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: C.text, marginBottom: 8 }}>{T("लॉगिन", "Login")}</h2>
+          <p style={{ fontSize: 14, color: C.muted, marginBottom: 24 }}>{T("दवा दुकान मैनेजमेंट के लिए", "For medicine store management")}</p>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: C.muted, marginBottom: 8, display: "block" }}>📱 {T("मोबाइल नंबर", "Mobile Number")}</label>
+            <div style={{ display: "flex", border: `2px solid ${C.border}`, borderRadius: 12, overflow: "hidden", background: C.card }}>
+              <span style={{ padding: "13px", background: C.bg, fontSize: 15, fontWeight: 700, color: C.muted, borderRight: `2px solid ${C.border}` }}>+91</span>
+              <input style={{ flex: 1, border: "none", outline: "none", fontSize: 16, fontWeight: 700, padding: "13px", background: "transparent", color: C.text, letterSpacing: 1 }} type="tel" value={loginPhone} onChange={e => setLoginPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} maxLength={10} disabled={loading} placeholder="0000000000" />
+            </div>
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: C.muted, display: "block" }}>
+                🔐 {T("पासवर्ड", "Password")}
+              </label>
+              <button type="button" onClick={() => { setScreen("forgot_password"); setError(""); setTimer(0); setDevOtp(""); }} style={{ background: "none", border: "none", padding: 0, color: C.primary, fontSize: 13, fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}>
+                {T("भूल गए?", "Forgot?")}
+              </button>
+            </div>
+            <div style={{ position: "relative" }}>
+              <input style={inputStyle} type={showLoginPwd ? "text" : "password"} value={loginPassword} onChange={e => setLoginPassword(e.target.value)} disabled={loading} placeholder="••••••••" />
+              <button type="button" onClick={() => setShowLoginPwd(!showLoginPwd)} style={{ position: "absolute", right: 16, top: 12, background: "none", border: "none", color: C.muted, cursor: "pointer" }}>
+                {showLoginPwd ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+                )}
+              </button>
+            </div>
+          </div>
+          <button onClick={handleLogin} disabled={loading} style={btnPrimary}>{loading ? "..." : T("लॉगिन करें", "Login")}</button>
+          <div style={{ textAlign: "center", marginTop: 24, color: C.muted, fontSize: 14 }}>
+            {T("नया अकाउंट?", "Don't have an account?")} <button onClick={() => setScreen("register_phone")} style={{ background: "none", border: "none", color: C.primary, fontWeight: 700, cursor: "pointer" }}>{T("रजिस्टर करें", "Register")}</button>
+          </div>
+        </>
+      )}
 
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-        <button onClick={() => setLang(lang === "hi" ? "en" : "hi")}
-          style={{ background: "rgba(230,126,34,.12)", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, color: C.orange, cursor: "pointer" }}>
-          {lang === "hi" ? "English" : "हिंदी"}
-        </button>
-      </div>
+      {/* ── FORGOT PASSWORD (PHONE) ──────────────────────── */}
+      {screen === "forgot_password" && (
+        <>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: C.text, marginBottom: 8 }}>{T("पासवर्ड रीसेट", "Reset Password")}</h2>
+          <p style={{ fontSize: 14, color: C.muted, marginBottom: 24, lineHeight: 1.4 }}>
+            {T("अपना मोबाइल नंबर दर्ज करें।", "Enter your mobile number.")}
+          </p>
 
-      <label style={{ fontSize: 13, fontWeight: 700, color: C.muted, display: "block", marginBottom: 8 }}>📱 {T("मोबाइल नंबर", "Mobile Number")}</label>
-      <div style={{ display: "flex", border: `2px solid ${C.border}`, borderRadius: 14, overflow: "hidden", background: C.card, marginBottom: 16 }}>
-        <div style={{ background: C.bg, padding: "0 16px", display: "flex", alignItems: "center", borderRight: `2px solid ${C.border}`, fontSize: 15, fontWeight: 700, color: C.muted }}>+91</div>
-        <input style={{ flex: 1, border: "none", outline: "none", fontSize: 20, fontWeight: 700, padding: "14px", background: "transparent", color: C.text, letterSpacing: 1 }}
-          type="tel" inputMode="numeric" value={loginPhone}
-          onChange={e => { setLoginPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); setError(""); }}
-          placeholder="98765 00001" autoFocus />
-      </div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: C.muted, marginBottom: 6, display: "block" }}>📱 {T("मोबाइल नंबर", "Mobile Number")}</label>
+            <div style={{ display: "flex", border: `2px solid ${C.border}`, borderRadius: 12, overflow: "hidden", background: C.card }}>
+              <span style={{ padding: "13px", background: C.bg, fontSize: 15, fontWeight: 700, color: C.muted, borderRight: `2px solid ${C.border}` }}>+91</span>
+              <input style={{ flex: 1, border: "none", outline: "none", fontSize: 16, fontWeight: 700, padding: "13px", background: "transparent", color: C.text, letterSpacing: 1 }} type="tel" value={loginPhone} onChange={e => setLoginPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} maxLength={10} disabled={loading} placeholder="0000000000" />
+            </div>
+          </div>
 
-      <label style={{ fontSize: 13, fontWeight: 700, color: C.muted, display: "block", marginBottom: 8 }}>🔒 {T("पासवर्ड", "Password")}</label>
-      <div style={{ display: "flex", border: `2px solid ${C.border}`, borderRadius: 14, overflow: "hidden", background: C.card }}>
-        <input style={{ flex: 1, border: "none", outline: "none", fontSize: 16, padding: "14px 16px", background: "transparent", color: C.text }}
-          type={showLoginPwd ? "text" : "password"} placeholder="••••••••" value={loginPassword}
-          onChange={e => { setLoginPassword(e.target.value); setError(""); }}
-          onKeyDown={e => e.key === "Enter" && handleLogin()} />
-        <button onClick={() => setShowLoginPwd(s => !s)}
-          style={{ background: "none", border: "none", padding: "0 16px", cursor: "pointer", fontSize: 18, color: C.muted }}>
-          {showLoginPwd ? "🙈" : "👁️"}
-        </button>
-      </div>
+          <button onClick={handleForgotPassword} disabled={loading || loginPhone.length !== 10} style={{ ...btnPrimary, opacity: (loading || loginPhone.length !== 10) ? 0.6 : 1 }}>
+            {loading ? "..." : T("OTP भेजें", "Send OTP")}
+          </button>
 
-      <button onClick={handleLogin} disabled={loading} style={btnPrimary}>
-        {loading ? "..." : `→ ${T("लॉगिन करें", "Login")}`}
-      </button>
+          <button onClick={() => { setScreen("login"); setError(""); }} disabled={loading} style={{ ...btnOutline, border: "none", marginTop: 10 }}>
+            ← {T("वापस लॉगिन पर जाएं", "Back to Login")}
+          </button>
+        </>
+      )}
 
-      <div style={{ height: 1, background: C.border, margin: "24px 0" }} />
+      {/* ── REGISTER: OTP / RESET PASSWORD ────────────────────────────── */}
+      {(screen === "register_otp" || screen === "reset_password") && (
+        <>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: C.text, marginBottom: 8 }}>
+            {screen === "reset_password" ? T("पासवर्ड रीसेट", "Reset Password") : T("सत्यापन", "Verification")}
+          </h2>
+          <p style={{ fontSize: 14, color: C.muted, marginBottom: 24, lineHeight: 1.4 }}>
+            {T(`+91 ${screen === "reset_password" ? loginPhone : regPhone} पर OTP भेजा गया`, `OTP sent to +91 ${screen === "reset_password" ? loginPhone : regPhone}`)}
+          </p>
 
-      <p style={{ fontSize: 13, color: C.muted, textAlign: "center", marginBottom: 12 }}>
-        {T("नया अकाउंट बनाएं?", "Don\'t have an account?")}
-      </p>
-      <button onClick={() => { setScreen("register_phone"); setError(""); }} style={btnOutline}>
-        🏪 {T("फार्मासिस्ट रजिस्ट्रेशन", "Register as Pharmacist")}
-      </button>
+          <div style={{ display: "flex", gap: 10, justifyContent: "space-between", marginBottom: 24 }}>
+            {otp.map((d, i) => (
+              <input key={i} ref={otpRefs[i]} style={{ width: 45, height: 55, borderRadius: 12, border: `2px solid ${d ? C.primary : C.border}`, background: C.card, textAlign: "center", fontSize: 22, fontWeight: 800, color: C.text, outline: "none" }} type="tel" maxLength={1} value={d} onChange={e => handleOtpKey(e.target.value, i)} onKeyDown={e => { if (e.key === "Backspace" && !otp[i] && i > 0) otpRefs[i - 1].current?.focus(); }} disabled={loading} />
+            ))}
+          </div>
 
-      <div style={{ height: 12 }} />
-      <button onClick={() => router.push("/login")} style={{ ...btnOutline, color: "#888", borderColor: "#eee" }}>
-        ← {T("मरीज़ लॉगिन पर जाएं", "Go to Patient Login")}
-      </button>
+          {devOtp && (
+            <div style={{ background: "#FEF9E7", borderRadius: 10, padding: "10px", marginBottom: 14, border: "1px solid #F4D03F", fontSize: 13, color: "#7D6608", textAlign: "center" }}>
+              🛠 Dev mode — OTP: <strong>{devOtp}</strong>
+            </div>
+          )}
+
+          {screen === "reset_password" && (
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: C.muted, marginBottom: 6, display: "block" }}>🔐 {T("नया पासवर्ड", "New Password")}</label>
+              <div style={{ position: "relative" }}>
+                <input style={inputStyle} type={showNewPassword ? "text" : "password"} value={newPassword} onChange={e => setNewPassword(e.target.value)} disabled={loading} placeholder={T("नया पासवर्ड दर्ज करें", "Enter new password")} />
+                <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} style={{ position: "absolute", right: 16, top: 12, background: "none", border: "none", color: C.muted, cursor: "pointer" }}>
+                  {showNewPassword ? (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <button onClick={screen === "reset_password" ? handleResetPassword : verifyOtp} disabled={loading || otp.join("").length !== 6 || (screen === "reset_password" && newPassword.length < 6)} style={{ ...btnPrimary, opacity: (loading || otp.join("").length !== 6) ? 0.6 : 1 }}>
+            {loading ? "..." : `✓ ${screen === "reset_password" ? T("पासवर्ड बदलें", "Reset Password") : T("सत्यापित करें", "Verify & Continue")}`}
+          </button>
+
+          <div style={{ textAlign: "center", marginTop: 20 }}>
+            {timer > 0 ? (
+              <p style={{ fontSize: 13, color: C.muted }}>{T(`${timer}s में पुनः भेजें`, `Resend in ${timer}s`)}</p>
+            ) : (
+              <button onClick={screen === "reset_password" ? handleForgotPassword : sendOtp} disabled={loading} style={{ background: "none", border: "none", color: C.primary, fontSize: 14, fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>
+                🔄 {T("OTP पुनः भेजें", "Resend OTP")}
+              </button>
+            )}
+          </div>
+
+          <button onClick={() => { setScreen(screen === "reset_password" ? "login" : "register_phone"); setOtp(["", "", "", "", "", ""]); setError(""); }} disabled={loading} style={{ ...btnOutline, border: "none", marginTop: 10 }}>
+            ← {T("पीछे जाएँ", "Go Back")}
+          </button>
+        </>
+      )}
     </div>
   </>);
 
@@ -314,50 +442,6 @@ export default function PharmacistLoginPage() {
       <button onClick={() => { setScreen("login"); setError(""); }} style={btnOutline}>
         → {T("लॉगिन करें", "Login")}
       </button>
-    </div>
-  </>);
-
-  // ─── SCREEN: REGISTER — OTP ──────────────────────────────
-
-  if (screen === "register_otp") return wrap(<>
-    <div style={{ background: `linear-gradient(135deg,${C.orange},${C.primaryDark})`, padding: "56px 24px 32px" }}>
-      <button onClick={() => { setScreen("register_phone"); setError(""); setOtp(["","","","","",""]); }}
-        style={{ background: "rgba(255,255,255,.15)", border: "none", borderRadius: 10, color: "white", padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", marginBottom: 16 }}>
-        ← {T("वापस", "Back")}
-      </button>
-      <div style={{ width: 52, height: 52, background: "rgba(255,255,255,.2)", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, marginBottom: 14 }}>🔐</div>
-      <h2 style={{ fontSize: 22, fontWeight: 800, color: "white", margin: 0 }}>{T("OTP दर्ज करें", "Enter OTP")}</h2>
-      <p style={{ fontSize: 13, color: "rgba(255,255,255,.65)", marginTop: 6 }}>+91 {regPhone}</p>
-    </div>
-    <div style={{ flex: 1, padding: "32px 20px" }}>
-      <p style={{ fontSize: 13, color: C.muted, textAlign: "center", marginBottom: 20 }}>
-        {T(`+91 ${regPhone} पर 6 अंक का OTP भेजा गया`, `A 6-digit OTP was sent to +91 ${regPhone}`)}
-      </p>
-      <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 24 }}>
-        {otp.map((d, i) => (
-          <input key={i} ref={otpRefs[i]}
-            style={{ width: 48, height: 56, borderRadius: 12, border: `2px solid ${error ? C.red : d ? C.orange : C.border}`, background: C.card, textAlign: "center", fontSize: 24, fontWeight: 800, color: C.text, outline: "none" }}
-            type="tel" inputMode="numeric" maxLength={1} value={d}
-            onChange={e => handleOtpKey(e.target.value, i)}
-            onKeyDown={e => e.key === "Backspace" && !otp[i] && i > 0 && otpRefs[i - 1].current?.focus()} />
-        ))}
-      </div>
-      {error && <p style={{ fontSize: 13, color: C.red, textAlign: "center", fontWeight: 600, marginBottom: 12 }}>⚠ {error}</p>}
-      <button onClick={verifyOtp} disabled={loading} style={btnPrimary}>
-        {loading ? "..." : `✓ ${T("OTP सत्यापित करें", "Verify OTP")}`}
-      </button>
-      <div style={{ textAlign: "center", marginTop: 16 }}>
-        {timer > 0
-          ? <p style={{ fontSize: 13, color: C.muted }}>{T(`दोबारा भेजें (${timer}s)`, `Resend in ${timer}s`)}</p>
-          : <button onClick={sendOtp} style={{ background: "none", border: "none", color: C.orange, fontSize: 13, fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>
-              {T("OTP दोबारा भेजें", "Resend OTP")}
-            </button>}
-      </div>
-      {devOtp && (
-        <div style={{ background: "#FEF9E7", borderRadius: 12, padding: 12, marginTop: 20, border: "1px solid #F4D03F" }}>
-          <p style={{ fontSize: 12, color: "#7D6608", margin: 0 }}>💡 Dev OTP: <strong>{devOtp}</strong></p>
-        </div>
-      )}
     </div>
   </>);
 
@@ -430,8 +514,12 @@ export default function PharmacistLoginPage() {
           <input style={{ flex: 1, border: "none", outline: "none", padding: "13px 16px", fontSize: 15, fontFamily: "inherit", background: "transparent", color: C.text }}
             type={showRegPwd ? "text" : "password"} placeholder="••••••••" value={password}
             onChange={e => { setPassword(e.target.value); setError(""); }} />
-          <button onClick={() => setShowRegPwd(s => !s)} style={{ background: "none", border: "none", padding: "0 14px", cursor: "pointer", fontSize: 16, color: C.muted }}>
-            {showRegPwd ? "🙈" : "👁️"}
+          <button type="button" onClick={() => setShowRegPwd(s => !s)} style={{ background: "none", border: "none", padding: "0 14px", cursor: "pointer", display: "flex", alignItems: "center", color: C.muted }}>
+            {showRegPwd ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+            )}
           </button>
         </div>
         {password && (
@@ -464,13 +552,25 @@ export default function PharmacistLoginPage() {
         )}
       </div>
 
-      <button onClick={handleRegister} disabled={loading} style={btnPrimary}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 16 }}>
+        <input
+          type="checkbox"
+          id="accept-terms"
+          checked={acceptTerms}
+          onChange={e => setAcceptTerms(e.target.checked)}
+          style={{ width: 18, height: 18, cursor: "pointer", marginTop: 2 }}
+        />
+        <label htmlFor="accept-terms" style={{ fontSize: 12, color: C.text, cursor: "pointer", lineHeight: 1.4 }}>
+          {T("मैं नियम और शर्तों को स्वीकार करता हूँ। ", "I accept the ")}
+          <a href="/terms?closeable=true" target="_blank" rel="noopener noreferrer" style={{ color: C.primary, fontWeight: 700, textDecoration: "underline" }}>
+            {T("नियम और शर्तें पढ़ें", "Terms & Conditions")}
+          </a>
+        </label>
+      </div>
+
+      <button onClick={handleRegister} disabled={loading || !acceptTerms} style={{ ...btnPrimary, background: (loading || !acceptTerms) ? "#ccc" : btnPrimary.background, cursor: (loading || !acceptTerms) ? "not-allowed" : "pointer" }}>
         {loading ? "..." : `✓ ${T("दुकान रजिस्टर करें", "Register Store")}`}
       </button>
-
-      <p style={{ fontSize: 11, color: C.muted, textAlign: "center", marginTop: 12 }}>
-        {T("रजिस्ट्रेशन करने पर आप हमारी शर्तों से सहमत हैं", "By registering you agree to our terms of service")}
-      </p>
     </div>
   </>);
 }

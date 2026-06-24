@@ -186,9 +186,12 @@ export default function TriagePage() {
     if (saved) {
       const parsedResult = JSON.parse(saved);
       setResult(parsedResult);
-      // Only compute home remedies for GREEN
       if (parsedResult.urgency === "GREEN") {
-        setHomeRemedies(HOME_REMEDIES_FOR_SYMPTOMS(syms));
+        if (parsedResult.homeRemedies && parsedResult.homeRemedies.length > 0) {
+          setHomeRemedies(parsedResult.homeRemedies);
+        } else {
+          setHomeRemedies(HOME_REMEDIES_FOR_SYMPTOMS(syms));
+        }
       }
     } else {
       const fallback = fallbackTriage(syms);

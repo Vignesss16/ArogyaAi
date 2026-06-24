@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   try {
     const lat = req.nextUrl.searchParams.get("lat");
     const lng = req.nextUrl.searchParams.get("lng");
-    const radiusParam = req.nextUrl.searchParams.get("radius") || "3000"; // 3km default for speed
+    const radiusParam = req.nextUrl.searchParams.get("radius") || "1500"; // 1.5km default for faster queries
 
     if (!lat || !lng) {
       return NextResponse.json({ error: "lat and lng are required" }, { status: 400 });
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
     // Overpass QL query to find pharmacies (optimized for speed)
     const overpassQuery = `
-      [out:json][timeout:10];
+      [out:json][timeout:25];
       (
         node["amenity"="pharmacy"](around:${radius},${lat},${lng});
         way["amenity"="pharmacy"](around:${radius},${lat},${lng});
@@ -38,11 +38,14 @@ export async function GET(req: NextRequest) {
       out center qt 50;
     `;
 
-    // Try multiple Overpass instances for speed
+    // Try multiple Overpass instances for speed and reliability
     const overpassInstances = [
       "https://overpass-api.de/api/interpreter",
       "https://lz4.overpass-api.de/api/interpreter",
       "https://z.overpass-api.de/api/interpreter",
+      "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+      "https://overpass.osm.ch/api/interpreter",
+      "https://overpass.kumi.systems/api/interpreter"
     ];
 
     let data = null;
@@ -57,7 +60,7 @@ export async function GET(req: NextRequest) {
           method: "POST",
           body: `data=${encodeURIComponent(overpassQuery)}`,
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          signal: AbortSignal.timeout(5000), // 5 second timeout
+          signal: AbortSignal.timeout(15000), // 15 second timeout to allow slower servers to respond
         });
 
         if (response.ok) {
@@ -76,7 +79,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ 
         pharmacies: [], 
         count: 0,
-        error: "Overpass API unavailable",
+        error: "Overpass API unavailable - Request timed out",
         source: "OpenStreetMap (Real Data)"
       });
     }

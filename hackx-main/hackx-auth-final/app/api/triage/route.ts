@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { runAITriage, fallbackTriage } from "@/lib/triage";
 
 export async function POST(req: NextRequest) {
-  const { symptoms } = await req.json();
+  const { symptoms, customSymptoms, duration, diseases, otherDisease } = await req.json();
 
-  if (!symptoms || symptoms.length === 0) {
+  if ((!symptoms || symptoms.length === 0) && (!customSymptoms || customSymptoms.trim().length === 0)) {
     return NextResponse.json({ error: "No symptoms provided" }, { status: 400 });
   }
 
   let result;
   try {
-    result = await runAITriage(symptoms);
+    const context = { duration, diseases, otherDisease };
+    result = await runAITriage(symptoms, customSymptoms, context);
   } catch (err) {
     console.warn("AI triage — using fallback:", (err as Error).message);
 
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
       await Consultation.create({
         patientPhone: "unknown",
         patientName: "Unknown",
-        symptoms,
+        symptoms: [...symptoms, customSymptoms].filter(Boolean),
         urgency: result.urgency,
         triageResult: result,
         status: "pending",

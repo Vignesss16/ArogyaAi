@@ -17,6 +17,7 @@ export interface TriageResult {
   contagious: BilingualText;
   emergency: boolean;
   summary: string;
+  homeRemedies?: Array<{ remedy: string; hi: string; en: string; icon: string }>;
 }
 
 interface TriageRule {
@@ -930,84 +931,78 @@ export function fallbackTriage(symptomIds: string[]): TriageResult {
 }
 
 // ─────────────────────────────────────────────────────
-// AI TRIAGE — Claude API (server-side only)
+// AI TRIAGE — Groq API (server-side only)
 // ─────────────────────────────────────────────────────
-export async function runAITriage(symptomNames: string[]): Promise<TriageResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey || apiKey.trim() === "" || apiKey.startsWith("sk-ant-...")) {
-    throw new Error("ANTHROPIC_API_KEY is not configured — using fallback triage.");
+export async function runAITriage(symptomNames: string[], customSymptoms?: string, context?: any): Promise<TriageResult> {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey || apiKey.trim() === "" || apiKey.startsWith("gsk_")) {
+    // If it starts with gsk_ it might be valid, but if it's a placeholder like "gsk_..." we should check.
+    if (apiKey === "gsk_your_api_key_here") {
+      throw new Error("GROQ_API_KEY is not configured — using fallback triage.");
+    }
   }
 
-  const Anthropic = (await import("@anthropic-ai/sdk")).default;
-  const client = new Anthropic({ apiKey });
+  if (!apiKey) {
+    throw new Error("GROQ_API_KEY is missing — using fallback triage.");
+  }
 
-  const prompt = `You are a medical triage AI for SehatSetu, serving rural patients in India. Patient reports: ${symptomNames.join(", ")}.
+  let patientReports = symptomNames.join(", ");
+  if (customSymptoms && customSymptoms.trim()) {
+    patientReports += `\nAdditional Custom Symptoms: ${customSymptoms}`;
+  }
 
-STRICT RULES — never deviate:
+  const prompt = `You are an expert medical triage AI for AarogyaAI, serving rural patients in India. 
+Patient reports: ${patientReports}.
+Context (Duration, Known Conditions, etc.): ${JSON.stringify(context || {})}
 
-RED (emergency: true) — STRICTLY follow:
-- chest pain (ANY combination including alone) = RED cardiac emergency
-- chest + breathlessness = RED cardiac emergency
-- chest + sweating = RED heart attack
-- breathlessness alone OR with any other symptom = RED
-- fever + rash + headache = RED dengue/meningitis
-- vomit + diarrhea + dizzy + weakness = RED severe dehydration
-- unconscious = RED
-- seizure = RED
-- severe/unusual bleeding = RED
+Analyze the symptoms and provide a comprehensive triage result in JSON format.
+Classify urgency strictly into one of three categories: RED, YELLOW, or GREEN.
+- RED: Life-threatening emergencies (e.g. severe chest pain, breathlessness, unconsciousness, severe bleeding, seizures).
+- YELLOW: Needs medical attention soon, but not an immediate emergency (e.g. high fever, suspected dengue/malaria, moderate pain, UTI).
+- GREEN: Mild discomfort, common ailments that can be managed at home or need monitoring (e.g. common cold, mild headache, mild stomach ache).
 
-YELLOW (emergency: false):
-- fever alone or with cough = YELLOW
-- fever + chills = YELLOW malaria
-- fever + body ache = YELLOW viral/flu
-- vomit + diarrhea (no severe weakness/dizziness) = YELLOW
-- headache + fever = YELLOW
-- headache + vomiting (no fever) = YELLOW migraine
-- dizzy + weakness = YELLOW low BP
-- burning urination = YELLOW UTI
-- stomach pain + fever = YELLOW
+CRITICAL INSTRUCTION FOR MEDICINES:
+If you suggest any medications (e.g. in 'doNow'), ONLY recommend OVER-THE-COUNTER (OTC) GENERIC MEDICINES that are completely safe and will not harm the patient under any circumstances (e.g., Paracetamol, ORS). Do NOT prescribe antibiotics, strong painkillers, or any restricted drugs. Emphasize seeing a doctor for proper prescriptions.
 
-GREEN (emergency: false):
-- headache alone (no fever) = GREEN
-- cold alone = GREEN
-- cough alone (no fever) = GREEN
-- back pain alone = GREEN
-- eye problem alone = GREEN
-- mild stomach pain alone (no fever) = GREEN
-- weakness alone (no fever) = GREEN
-- dizziness alone (no weakness) = GREEN
-- rash alone (no fever) = GREEN
-- joint pain alone = GREEN
-- swelling alone = GREEN
-- nausea alone = GREEN
-- body ache alone (no fever) = GREEN
+If the symptoms are mild (GREEN), please provide 3-4 safe and effective home remedies suitable for the Indian context in the 'homeRemedies' array. Ensure they use common household items (like tulsi, ginger, honey, etc.).
 
 Respond ONLY with raw JSON, no markdown, no backticks:
 {
   "urgency": "RED" or "YELLOW" or "GREEN",
   "conditionHi": "Hindi condition name max 6 words",
   "conditionEn": "English condition name max 6 words",
-  "doNow": [{"hi":"Hindi action","en":"English action"},{"hi":"...","en":"..."},{"hi":"...","en":"..."}],
-  "doNot": [{"hi":"Hindi avoid","en":"English avoid"},{"hi":"...","en":"..."}],
-  "warnings": [{"hi":"Hindi warning","en":"English warning"},{"hi":"...","en":"..."}],
+  "doNow": [{"hi":"Hindi action","en":"English action"}],
+  "doNot": [{"hi":"Hindi avoid","en":"English avoid"}],
+  "warnings": [{"hi":"Hindi warning","en":"English warning"}],
   "docType": {"hi":"Hindi specialist","en":"English specialist"},
   "wait": {"hi":"Hindi time","en":"English time"},
   "contagious": {"hi":"Hindi yes/no/possibly","en":"English yes/no/possibly"},
   "emergency": true or false,
-  "summary": "one clinical sentence max 15 words"
+  "summary": "one clinical sentence max 15 words",
+  "homeRemedies": [{"remedy":"unique_id","icon":"emoji","hi":"Hindi text","en":"English text"}]
 }
-doNow: exactly 3 items. doNot: exactly 2 items. warnings: 2-3 items. Raw JSON only.`;
+Ensure there are exactly 3 doNow, exactly 2 doNot, and 2-3 warnings. The homeRemedies array should have 3-4 items if GREEN, otherwise omit it or send an empty array. Raw JSON only.`;
 
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 1024,
-    messages: [{ role: "user", content: prompt }],
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.1,
+    }),
   });
 
-  const text = message.content
-    .filter((b) => b.type === "text")
-    .map((b) => (b as { type: "text"; text: string }).text)
-    .join("")
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Groq API error: ${response.status} ${errText}`);
+  }
+
+  const data = await response.json();
+  const text = data.choices[0].message.content
     .replace(/```json|```/g, "")
     .trim();
 

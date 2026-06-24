@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { addToSyncQueue, getDB } from "@/lib/db-offline";
+import { useLang } from "@/lib/useLang";
 
 const C = { primary: "#1B6CA8", primaryDark: "#0F4C7A", red: "#C0392B", redLight: "#E74C3C", bg: "#F0F4F8", card: "#FFFFFF", text: "#1A2332", muted: "#6B7C93", border: "#DDE3EC" };
 
@@ -11,7 +12,7 @@ export default function SOSPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const { isOnline } = useOnlineStatus();
-  const lang = typeof window !== "undefined" ? localStorage.getItem("lang") || "hi" : "hi";
+  const { lang, mounted } = useLang();
   const t = (hi: string, en: string) => lang === "hi" ? hi : en;
   const [sent, setSent] = useState(false);
   const [savedOffline, setSavedOffline] = useState(false);
@@ -27,6 +28,8 @@ export default function SOSPage() {
   // Pre-fill village from session once loaded, but keep it editable
   const sessionVillage = (session?.user as any)?.villages || (session?.user as any)?.village || "";
   const displayVillage = village || sessionVillage;
+
+  if (!mounted) return null;
 
   const sendAlert = async () => {
     setSending(true);

@@ -51,7 +51,7 @@ export default function ASHALoginPage() {
 
         {/* Header */}
         <div style={{ background: `linear-gradient(135deg,${C.purple},${C.purpleDark})`, padding: "56px 24px 36px", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", right: -20, top: -20, fontSize: 120, opacity: .06 }}>👩</div>
+          <div style={{ position: "absolute", right: -20, top: -20, fontSize: 120, opacity: .06, pointerEvents: "none" }}>👩</div>
           <div style={{ width: 52, height: 52, background: "rgba(255,255,255,.2)", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, marginBottom: 16 }}>🏘️</div>
           <h2 style={{ fontSize: 24, fontWeight: 800, color: "white", margin: 0 }}>
             {T("आशा वर्कर लॉगिन", "ASHA Worker Login")}
@@ -122,6 +122,12 @@ export default function ASHALoginPage() {
           >
             ← {T("मरीज़ लॉगिन पर जाएं", "Go to Patient Login")}
           </button>
+
+          <div style={{ textAlign: "center", marginTop: 24 }}>
+            <a href="/terms" style={{ fontSize: 12, color: C.muted, textDecoration: "underline", cursor: "pointer" }}>
+              {T("नियम और शर्तें (Terms & Conditions)", "Terms & Conditions")}
+            </a>
+          </div>
         </div>
 
       </div>

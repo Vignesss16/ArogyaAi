@@ -318,11 +318,7 @@ import type { TriageResult } from "@/lib/triage";
 
 const C = { primary: "#1B6CA8", primaryDark: "#0F4C7A", green: "#1E8449", greenLight: "#27AE60", red: "#C0392B", yellow: "#F39C12", bg: "#F0F4F8", card: "#FFFFFF", text: "#1A2332", muted: "#6B7C93", border: "#DDE3EC" };
 
-const DOCTORS = [
-  { id: "D1", name: "Dr. Arvind Kumar", spec: (t: (hi: string, en: string) => string) => t("जनरल फिजिशियन", "General Physician"), hospital: "Nabha Civil Hospital", dist: "2.1 km", slots: ["9:00 AM", "9:30 AM", "10:30 AM", "11:00 AM", "2:00 PM", "3:30 PM"], fee: "₹0 (Govt)" },
-  { id: "D2", name: "Dr. Sunita Sharma", spec: (t: (hi: string, en: string) => string) => t("बाल रोग विशेषज्ञ", "Pediatrician"), hospital: "PHC Kesri", dist: "0.8 km", slots: ["9:30 AM", "11:00 AM", "3:00 PM", "4:00 PM"], fee: "₹0 (Govt)" },
-  { id: "D3", name: "Dr. Ravi Patel", spec: (t: (hi: string, en: string) => string) => t("हृदय रोग विशेषज्ञ", "Cardiologist"), hospital: "District Hospital", dist: "5.2 km", slots: ["10:00 AM", "11:30 AM", "4:30 PM"], fee: "₹200" },
-];
+// Dynamic fetch handles this now
 
 function t(lang: string, hi: string, en: string) { return lang === "hi" ? hi : en; }
 
@@ -333,7 +329,8 @@ export default function ConfirmPage() {
   const [patient, setPatient] = useState<{ name: string; phone: string } | null>(null);
   const { data: session } = useSession();
   const [step, setStep] = useState<"select-doctor" | "select-slot" | "booked">("select-doctor");
-  const [selectedDoctor, setSelectedDoctor] = useState<typeof DOCTORS[0] | null>(null);
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [selectedDoctor, setSelectedDoctor] = useState<any | null>(null);
   const [selectedSlot, setSelectedSlot] = useState("");
   const [queueNo, setQueueNo] = useState("");
   const [loading, setLoading] = useState(false);
@@ -353,6 +350,28 @@ export default function ConfirmPage() {
   });
 }
   }, [session]);
+
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      try {
+        const res = await fetch("/api/admin/doctors");
+        const data = await res.json();
+        if (data.doctors) {
+          const mapped = data.doctors.map((d: any) => ({
+            id: d._id,
+            name: d.name.startsWith("Dr.") ? d.name : "Dr. " + d.name,
+            spec: (t: any) => t(d.specialization, d.specialization),
+            hospital: d.hospital,
+            dist: `${(Math.random() * 5 + 1).toFixed(1)} km`,
+            slots: ["9:00 AM", "10:30 AM", "12:00 PM", "2:30 PM", "4:00 PM"],
+            fee: "₹0 (Govt)"
+          }));
+          setDoctors(mapped);
+        }
+      } catch {}
+    };
+    fetchDoctors();
+  }, []);
 
   const urg = result?.urgency || "GREEN";
   const urgColor = { RED: C.red, YELLOW: C.yellow, GREEN: C.green }[urg];
@@ -424,7 +443,7 @@ export default function ConfirmPage() {
     setLoadingSlots(false);
   };
 
-  const selectDoctor = (doc: typeof DOCTORS[0]) => {
+  const selectDoctor = (doc: any) => {
     setSelectedDoctor(doc);
     setSelectedSlot("");
     setStep("select-slot");
@@ -454,7 +473,8 @@ export default function ConfirmPage() {
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px 24px" }}>
           <p style={{ fontSize: 12, color: C.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>{T("पास के डॉक्टर", "Nearby Doctors")}</p>
-          {DOCTORS.map(doc => (
+          {doctors.length === 0 && <div style={{textAlign: "center", padding: 20, color: C.muted}}>{T("डॉक्टर लोड हो रहे हैं...", "Loading doctors...")}</div>}
+          {doctors.map(doc => (
             <div key={doc.id} onClick={() => selectDoctor(doc)}
               style={{ background: C.card, borderRadius: 16, padding: 16, marginBottom: 12, border: `1px solid ${C.border}`, cursor: "pointer", transition: "all .2s" }}>
               <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -470,7 +490,7 @@ export default function ConfirmPage() {
                 </div>
               </div>
               <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-                {doc.slots.slice(0, 4).map(s => (
+                {doc.slots.slice(0, 4).map((s: string) => (
                   <span key={s} style={{ background: "#E8F8EF", color: C.green, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700 }}>🕐 {s}</span>
                 ))}
                 {doc.slots.length > 4 && <span style={{ background: C.bg, color: C.muted, borderRadius: 8, padding: "4px 10px", fontSize: 11 }}>+{doc.slots.length - 4} {T("और", "more")}</span>}
@@ -511,7 +531,7 @@ export default function ConfirmPage() {
           <p style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>{T("समय चुनें", "Select Time Slot")}</p>
           {loadingSlots && <div style={{ textAlign: "center", padding: "10px 0", fontSize: 12, color: C.muted }}>⏳ {T("उपलब्ध स्लॉट देख रहे हैं...", "Checking available slots...")}</div>}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
-            {selectedDoctor.slots.map(slot => {
+            {selectedDoctor.slots.map((slot: string) => {
               const isBooked = bookedSlots.includes(slot);
               const isSelected = selectedSlot === slot;
               return (

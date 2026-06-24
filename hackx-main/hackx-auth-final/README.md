@@ -16,7 +16,7 @@ Copy `.env.local` and fill in your values:
 ```
 MONGODB_URI=mongodb+srv://<user>:<password>@cluster0.xxxxx.mongodb.net/sehat-setu
 NEXTAUTH_SECRET=your-secret-here
-ANTHROPIC_API_KEY=your-anthropic-key-here
+GROQ_API_KEY=your-groq-key-here
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
@@ -51,7 +51,7 @@ Open [http://localhost:3000](http://localhost:3000)
 | Login | `/login` | Patient phone login + registration |
 | Home | `/home` | Patient dashboard |
 | Symptoms | `/symptoms` | 16-icon tap-based symptom checker |
-| AI Triage | `/triage` | Claude AI triage result (RED/YELLOW/GREEN) |
+| AI Triage | `/triage` | Groq AI triage result (RED/YELLOW/GREEN) |
 | Confirm | `/confirm` | Appointment booking confirmation |
 | Records | `/records` | Patient health history |
 | Medicine | `/medicine` | Find medicine at nearby pharmacies |
@@ -67,7 +67,7 @@ Open [http://localhost:3000](http://localhost:3000)
 ## 🛠 Tech Stack
 
 - **Frontend**: Next.js 14 (App Router) + TypeScript + Tailwind CSS
-- **AI Engine**: Anthropic Claude (claude-sonnet-4) via `/api/triage`
+- **AI Engine**: Groq LLaMA (llama-3.3-70b-versatile) via `/api/triage`
 - **Database**: MongoDB Atlas via Mongoose
 - **Offline**: Dexie.js (IndexedDB) + next-pwa (Service Worker)
 - **Maps**: Leaflet / react-leaflet
@@ -79,7 +79,7 @@ Open [http://localhost:3000](http://localhost:3000)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/triage` | Claude AI symptom triage |
+| POST | `/api/triage` | Groq AI symptom triage |
 | GET/POST | `/api/patients` | Patient CRUD |
 | GET/POST | `/api/consultations` | Consultation queue (RED first) |
 | POST | `/api/sos` | SOS alert broadcast |
@@ -92,7 +92,7 @@ Open [http://localhost:3000](http://localhost:3000)
 ## 📦 Offline Architecture
 
 ```
-User taps symptoms → /api/triage (if online) → Claude AI result
+User taps symptoms → /api/triage (if online) → Groq AI result
                   ↓ (if offline)
              IndexedDB fallback triage
                   ↓

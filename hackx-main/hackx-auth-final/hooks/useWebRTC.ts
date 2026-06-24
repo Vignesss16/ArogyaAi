@@ -70,6 +70,8 @@ export function useWebRTC(
   const durationRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingOfferRef = useRef<RTCSessionDescriptionInit | null>(null);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const [state, setState] = useState<WebRTCState>({
     callMode: "idle",
@@ -87,6 +89,12 @@ export function useWebRTC(
   const cleanup = useCallback(() => {
     if (networkMonitorRef.current) clearInterval(networkMonitorRef.current);
     if (durationRef.current) clearInterval(durationRef.current);
+    
+    // Stop recording if active
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     pcRef.current?.close();
     pcRef.current = null;
@@ -166,12 +174,48 @@ export function useWebRTC(
           () => setState((s) => ({ ...s, callDuration: s.callDuration + 1 })),
           1000
         );
+
+        // Start recording if initiator (doctor)
+        if (isInitiator && localStreamRef.current && !mediaRecorderRef.current) {
+          const audioTrack = localStreamRef.current.getAudioTracks()[0];
+          if (audioTrack) {
+            try {
+              const recorder = new MediaRecorder(new MediaStream([audioTrack]), { mimeType: "audio/webm;codecs=opus" });
+              recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) audioChunksRef.current.push(e.data);
+              };
+              recorder.onstop = async () => {
+                const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+                audioChunksRef.current = [];
+                mediaRecorderRef.current = null;
+                
+                // Upload blob to backend
+                const formData = new FormData();
+                formData.append("audio", blob, "consultation.webm");
+                formData.append("roomId", roomId);
+
+                try {
+                  await fetch("/api/consultations/summary", {
+                    method: "POST",
+                    body: formData,
+                  });
+                } catch (err) {
+                  console.error("Failed to upload summary audio", err);
+                }
+              };
+              recorder.start(1000);
+              mediaRecorderRef.current = recorder;
+            } catch (err) {
+              console.warn("MediaRecorder init failed:", err);
+            }
+          }
+        }
       } else if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
         setState((s) => ({ ...s, statusMessage: "⚠️ Connection lost — trying to reconnect..." }));
       }
     };
     return pc;
-  }, [roomId, monitorNetwork]);
+  }, [roomId, monitorNetwork, isInitiator]);
 
   // ── Pusher subscription ────────────────────────────────────────────────────
   useEffect(() => {

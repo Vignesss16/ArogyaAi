@@ -5,6 +5,7 @@ import Consultation from "@/models/Consultation";
 export async function GET(req: NextRequest) {
   const status = req.nextUrl.searchParams.get("status") || "pending";
   const id = req.nextUrl.searchParams.get("id");
+  const doctorId = req.nextUrl.searchParams.get("doctorId");
   try {
     await dbConnect();
 
@@ -15,8 +16,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ consultation });
     }
 
-    // Fetch all consultations regardless of status
-    const query = status === "all" ? {} : { status };
+    // Fetch consultations based on status and doctorId
+    const query: any = status === "all" ? {} : { status };
+    if (doctorId) {
+      query.doctorId = doctorId;
+    }
+
     const raw = await Consultation.find(query).sort({ createdAt: -1 });
     const priority: Record<string, number> = { RED: 0, YELLOW: 1, GREEN: 2 };
     const sorted = raw.sort((a, b) => (priority[a.urgency] ?? 3) - (priority[b.urgency] ?? 3));

@@ -10,7 +10,13 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(req.nextUrl.searchParams.get("limit") || "50");
 
     let query: any = {};
-    if (patientPhone) query.patientPhone = patientPhone;
+    if (patientPhone) {
+      if (/^\d+$/.test(patientPhone) || patientPhone.startsWith("unknown-")) {
+        query.patientPhone = patientPhone;
+      } else {
+        query.patientName = { $regex: new RegExp(patientPhone, "i") };
+      }
+    }
     if (recordedBy) query.recordedBy = recordedBy;
 
     const vitals = await VitalSigns.find(query).sort({ recordedAt: -1 }).limit(limit);
@@ -44,6 +50,26 @@ export async function POST(req: NextRequest) {
 
     if (!patientPhone || !recordedBy) {
       return NextResponse.json({ error: "Patient phone and recorder are required" }, { status: 400 });
+    }
+
+    // Auto-create patient if they don't exist in the system
+    if (patientName) {
+      const Patient = (await import("@/models/Patient")).default;
+      const patientQuery = patientPhone && patientPhone !== "unknown"
+        ? { phone: patientPhone }
+        : { name: patientName };
+        
+      const existingPatient = await Patient.findOne(patientQuery);
+      
+      if (!existingPatient) {
+        await Patient.create({
+          name: patientName,
+          phone: patientPhone && patientPhone !== "unknown" ? patientPhone : `unknown-${Date.now()}`,
+          age: 0,
+          gender: "unknown",
+          village: "Auto-registered via Vitals",
+        });
+      }
     }
 
     const vital = await VitalSigns.create({

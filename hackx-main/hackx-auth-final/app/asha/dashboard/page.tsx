@@ -38,6 +38,13 @@ export default function ASHADashboardPage() {
     setLoadingPt(false);
   }, []);
 
+  // Re-fetch patients when switching to the 'patients' tab
+  useEffect(() => {
+    if (activeTab === "patients") {
+      fetchPatients();
+    }
+  }, [activeTab, fetchPatients]);
+
   const fetchVisits = useCallback(async () => {
     try { const r = await fetch(`/api/asha/visits?ashaPhone=${ashaPhone}`); const d = await r.json(); setVisits(d.visits || []); }
     catch { /* offline */ }
@@ -59,7 +66,8 @@ export default function ASHADashboardPage() {
 
   const filtered = patients.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.village || "").toLowerCase().includes(searchQuery.toLowerCase())
+    (p.village || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.phone || "").includes(searchQuery)
   );
   const redCount    = visits.filter(v => v.notes.toLowerCase().includes("red")).length;
   const yellowCount = visits.filter(v => v.notes.toLowerCase().includes("yellow")).length;
@@ -82,7 +90,7 @@ export default function ASHADashboardPage() {
           </div>
         </div>
         <div style={{ background: `linear-gradient(135deg,${C.purple},#5B2C6F)`, padding: "16px 16px 20px", position: "relative" }}>
-          <div style={{ position: "absolute", right: -10, top: -10, fontSize: 80, opacity: .07 }}>👩</div>
+          <div style={{ position: "absolute", right: -10, top: -10, fontSize: 80, opacity: .07, pointerEvents: "none" }}>👩</div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: "white", margin: 0 }}>{T("मेरे गाँव के मरीज़", "My Village Patients")}</h2>
@@ -125,7 +133,7 @@ export default function ASHADashboardPage() {
             <div style={{ display: "flex", alignItems: "center", border: `2px solid ${C.border}`, borderRadius: 12, background: C.card, marginBottom: 10, overflow: "hidden" }}>
               <span style={{ padding: "10px 12px", fontSize: 16 }}>🔍</span>
               <input style={{ flex: 1, border: "none", outline: "none", fontSize: 14, padding: "10px 0", background: "transparent" }}
-                placeholder={T("मरीज़ या गाँव खोजें...", "Search patient or village...")} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                placeholder={T("मरीज़, फ़ोन या गाँव खोजें...", "Search name, phone or village...")} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
             </div>
             {loadingPt ? (
               <div style={{ textAlign: "center", padding: "30px 20px", color: C.muted }}>

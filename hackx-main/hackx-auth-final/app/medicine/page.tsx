@@ -153,6 +153,8 @@ export default function MedicinePage() {
   const [active, setActive] = useState("");
   const [search, setSearch] = useState("");
   const [manualMode, setManualMode] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [apiSuggestions, setApiSuggestions] = useState<string[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
 
@@ -263,7 +265,7 @@ export default function MedicinePage() {
     const startTime = Date.now();
     setLoadingPharmacies(true);
 
-    fetch(`/api/real-pharmacies?lat=${userLat}&lng=${userLng}&radius=3000`)
+    fetch(`/api/real-pharmacies?lat=${userLat}&lng=${userLng}`)
       .then(r => {
         console.log("API response time:", Date.now() - startTime, "ms");
         return r.json();
@@ -307,23 +309,67 @@ export default function MedicinePage() {
       .catch((err) => console.error("❌ Search error:", err));
   }, [search, userLat, userLng]);
 
+  // Fetch Autocomplete Suggestions from API
+  useEffect(() => {
+    if (!search || !manualMode) {
+      setApiSuggestions([]);
+      return;
+    }
+    
+    const debounce = setTimeout(() => {
+      fetch(`/api/medicines/autocomplete?q=${encodeURIComponent(search)}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.suggestions) {
+            // Filter out exact match if it's the only one, or just set them
+            setApiSuggestions(d.suggestions.filter((s: string) => s.toLowerCase() !== search.toLowerCase()));
+          }
+        })
+        .catch(err => console.error("Autocomplete API error:", err));
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(debounce);
+  }, [search, manualMode]);
+
   const displayMed = active || search;
   const hasPrescribed = prescribedMeds.length > 0;
 
   if (!hydrated) return null;
 
-  const pharmacyRows = pharmacists.map(p => {
-    const medStock = displayMed ? p.stock?.find((s: any) => s.medicineName.toLowerCase().includes(displayMed.toLowerCase())) : null;
+  const pharmacyRows = pharmacists.map((p, idx) => {
+    let inStock = false;
+    let qty = 0;
+    let price = "—";
+
+    if (displayMed) {
+      if (p.stock && p.stock.length > 0) {
+        // Offline / Database pharmacy with explicit stock array
+        const medStock = p.stock.find((s: any) => s.medicineName.toLowerCase().includes(displayMed.toLowerCase()));
+        inStock = medStock?.inStock || false;
+        qty = medStock?.qty || 0;
+        price = medStock?.price || "—";
+      } else {
+        // Real pharmacy from OpenStreetMap - we don't know the exact stock
+        inStock = true;
+        qty = -1; // Flag for unknown stock
+        price = "—";
+      }
+    } else {
+      inStock = true; // when no med is searched, just show the store
+    }
+
     return {
-      id: p._id,
+      id: p.id || p._id || idx,
       name: p.storeName || p.name,
       village: p.village,
       dist: p.distanceKm || "—",
       phone: p.phone,
+      lat: p.lat,
+      lng: p.lng,
       type: p.type || "Private",
-      qty: medStock?.qty || 0,
-      inStock: medStock?.inStock || false,
-      price: medStock?.price || "—",
+      qty,
+      inStock,
+      price,
     };
   }).sort((a, b) => (b.inStock ? 1 : 0) - (a.inStock ? 1 : 0));
 
@@ -375,11 +421,25 @@ export default function MedicinePage() {
               </button>
             </div>
           )}
-          <div style={{ display: "flex", alignItems: "center", border: `2px solid ${manualMode ? C.primary : C.border}`, borderRadius: 12, overflow: "hidden", background: C.bg }}>
-            <span style={{ padding: "10px 14px", fontSize: 18 }}>🔍</span>
-            <input style={{ flex: 1, border: "none", outline: "none", fontSize: 15, padding: "10px 0", background: "transparent", fontFamily: "inherit" }}
-              placeholder={T("दवाई का नाम लिखें...", "Type medicine name...")} value={search}
-              onChange={e => { setSearch(e.target.value); setActive(e.target.value); setManualMode(true); }} />
+          <div style={{ position: "relative" }}>
+            <div style={{ display: "flex", alignItems: "center", border: `2px solid ${manualMode ? C.primary : C.border}`, borderRadius: 12, overflow: "hidden", background: C.bg }}>
+              <span style={{ padding: "10px 14px", fontSize: 18 }}>🔍</span>
+              <input style={{ flex: 1, border: "none", outline: "none", fontSize: 15, padding: "10px 0", background: "transparent", fontFamily: "inherit" }}
+                placeholder={T("दवाई का नाम लिखें...", "Type medicine name...")} value={search}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                onChange={e => { setSearch(e.target.value); setActive(e.target.value); setManualMode(true); setShowSuggestions(true); }} />
+            </div>
+            {showSuggestions && search && manualMode && apiSuggestions.length > 0 && (
+              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, marginTop: 4, zIndex: 100, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", overflow: "hidden" }}>
+                {apiSuggestions.map(s => (
+                  <div key={s} onClick={() => { setSearch(s); setActive(s); setShowSuggestions(false); setManualMode(true); }}
+                    style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}`, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+                    {s}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           {/* Dose hint */}
           {!manualMode && active && (() => {
@@ -501,18 +561,17 @@ export default function MedicinePage() {
                     <div style={{ width: 40, height: 40, borderRadius: 10, background: p.inStock ? "#E8F8EF" : "#FDEDED", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>💊</div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 700 }}>{p.name}</div>
+                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`} target="_blank" rel="noreferrer" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+                          <div style={{ fontSize: 14, fontWeight: 700 }}>{p.name} <span style={{fontSize: 10}}>↗️</span></div>
                           <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>📍 {p.village} · {p.dist} km</div>
-                        </div>
+                        </a>
                         <span style={{ background: p.type === "Govt Free" ? "#E8F8EF" : p.type === "Jan Aushadhi" ? "#EBF4FD" : C.bg, color: p.type === "Govt Free" ? C.green : p.type === "Jan Aushadhi" ? C.primary : C.muted, borderRadius: 8, padding: "3px 8px", fontSize: 10, fontWeight: 700 }}>{p.type}</span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: p.inStock ? C.green : C.red }}>
-                          {p.inStock ? `✓ ${T("उपलब्ध", "In Stock")}` : `✗ ${T("उपलब्ध नहीं", "Out of Stock")}`}
-                          {p.inStock ? ` (${p.qty})` : ""}
+                        <span style={{ fontSize: 12, fontWeight: 700, color: p.qty === -1 ? C.muted : (p.inStock ? C.green : C.red) }}>
+                          {p.qty === -1 ? `❓ ${T("कॉल करके पूछें", "Call to check stock")}` : (p.inStock ? `✓ ${T("उपलब्ध", "In Stock")} (${p.qty})` : `✗ ${T("उपलब्ध नहीं", "Out of Stock")}`)}
                         </span>
-                        {p.inStock && <span style={{ fontSize: 13, fontWeight: 800, color: C.primary }}>{p.price}</span>}
+                        {p.inStock && p.qty !== -1 && <span style={{ fontSize: 13, fontWeight: 800, color: C.primary }}>{p.price}</span>}
                       </div>
                     </div>
                   </div>
@@ -560,12 +619,12 @@ export default function MedicinePage() {
                       <div style={{ width: 40, height: 40, borderRadius: 10, background: "#EBF4FD", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🏥</div>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                          <div>
-                            <div style={{ fontSize: 14, fontWeight: 700 }}>{p.storeName || p.name}</div>
+                          <a href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`} target="_blank" rel="noreferrer" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+                            <div style={{ fontSize: 14, fontWeight: 700 }}>{p.storeName || p.name} <span style={{fontSize: 10}}>↗️</span></div>
                             <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>📍 {p.village} · {dist} km away</div>
                             {hasAddress && <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>🏠 {p.address}</div>}
                             {hasHours && <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>🕐 {p.opening_hours}</div>}
-                          </div>
+                          </a>
                           <span style={{ background: p.type === "Govt Free" ? "#E8F8EF" : p.type === "Jan Aushadhi" ? "#EBF4FD" : C.bg, color: p.type === "Govt Free" ? C.green : p.type === "Jan Aushadhi" ? C.primary : C.muted, borderRadius: 8, padding: "3px 8px", fontSize: 10, fontWeight: 700 }}>{p.type}</span>
                         </div>
                       </div>

@@ -1,7 +1,9 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
+import { useSession } from "next-auth/react";
 import type { TriageResult } from "@/lib/triage";
+import { generatePDF, PatientInfo, Consultation } from '@/lib/pdf';
 
 const C = { primary: "#1B6CA8", primaryDark: "#0F4C7A", green: "#1E8449", red: "#C0392B", yellow: "#F39C12", bg: "#F0F4F8", card: "#FFFFFF", text: "#1A2332", muted: "#6B7C93", border: "#DDE3EC" };
 
@@ -283,10 +285,12 @@ function PrescriptionSlip({ patient, rxRows, doctorName, doctorNotes, consultati
 
 export default function ReportPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [lang, setLang] = useState("hi");
-  const [patient, setPatient] = useState<Patient | null>(null);
+  const [localPatient, setLocalPatient] = useState<Patient | null>(null);
   const [result, setResult] = useState<TriageResult | null>(null);
   const [symptoms, setSymptoms] = useState<string[]>([]);
+  const [customSymptoms, setCustomSymptoms] = useState<string>("");
   const [hydrated, setHydrated] = useState(false);
   const [rxRows, setRxRows] = useState<RxRow[]>([]);
   const [doctorName, setDoctorName] = useState("Dr. Aarogya");
@@ -295,9 +299,10 @@ export default function ReportPage() {
 
   useEffect(() => {
     setLang(localStorage.getItem("lang") || "hi");
-    try { const p = localStorage.getItem("patient"); if (p) setPatient(JSON.parse(p)); } catch { }
+    try { const p = localStorage.getItem("patient"); if (p) setLocalPatient(JSON.parse(p)); } catch { }
     try { const r = localStorage.getItem("triageResult"); if (r) setResult(JSON.parse(r)); } catch { }
     try { const s = localStorage.getItem("selectedSymptoms"); if (s) setSymptoms(JSON.parse(s)); } catch { }
+    try { const cs = localStorage.getItem("customSymptoms"); if (cs) setCustomSymptoms(cs); } catch { }
     // Load prescription if doctor has completed consultation
     try {
       const rx = localStorage.getItem("doctorPrescription");
@@ -329,6 +334,19 @@ export default function ReportPage() {
     win.document.close();
     win.print();
   };
+
+  const user = session?.user as any;
+
+  // Combine session data with local data if available
+  const patient = user ? {
+    name: user.name || localPatient?.name || "Patient",
+    age: user.age || localPatient?.age || "—",
+    village: localPatient?.village || "—",
+    phone: user.phone || localPatient?.phone || "—",
+    gender: user.gender === "female" ? t("महिला", "Female") : user.gender === "male" ? t("पुरुष", "Male") : localPatient?.gender || "—",
+    conditions: user.conditions || localPatient?.conditions || "—",
+    bloodGroup: user.bloodGroup || localPatient?.bloodGroup || "—",
+  } : localPatient;
 
   if (!hydrated) return null;
 
@@ -362,8 +380,32 @@ export default function ReportPage() {
               <div style={{ fontSize: 15, fontWeight: 800, color: "white" }}>{t("स्वास्थ्य रिपोर्ट", "Health Report")}</div>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,.7)" }}>{reportDate}</div>
             </div>
-            <button onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: "rgba(255,255,255,.2)", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-              🖨️ {t("प्रिंट", "Print")}
+            <button onClick={() => {
+              if (result) {
+                const pInfo: PatientInfo = {
+                  name: patient?.name || "Patient",
+                  gender: patient?.gender || "Unknown",
+                  age: patient?.age || "—",
+                  phone: patient?.phone || "—",
+                  bloodGroup: patient?.bloodGroup || "—",
+                  condition: patient?.conditions || "—",
+                };
+                const hasDoctorInteraction = rxRows.length > 0 || !!doctorNotes;
+                const cons: Consultation = {
+                  _id: "report-" + Date.now(),
+                  symptoms: [...symptoms.map(s => SYMPTOMS_MAP[s]?.en || s), customSymptoms].filter(Boolean),
+                  urgency: result.urgency,
+                  triageResult: result,
+                  status: hasDoctorInteraction ? "completed" : "pending",
+                  doctorName: hasDoctorInteraction ? doctorName.replace("Dr. ", "").replace("Dr ", "") : undefined,
+                  doctorNotes: doctorNotes || undefined,
+                  prescription: rxRows.length > 0 ? rxRows.map(r => `${r.medicine} ${r.dose} - ${r.frequency} - ${r.duration} (${r.instructions})`).join("\n") : undefined,
+                  createdAt: new Date().toISOString(),
+                };
+                generatePDF(pInfo, [cons]);
+              }
+            }} style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: "rgba(255,255,255,.2)", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              📄 {t("PDF डाउनलोड", "Download PDF")}
             </button>
           </div>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 30, fontSize: 16, fontWeight: 800, color: "white", background: "rgba(255,255,255,.2)", border: "2px solid rgba(255,255,255,.4)" }}>
@@ -409,7 +451,12 @@ export default function ReportPage() {
                 if (!s) return null;
                 return <span key={id} style={{ background: "#EBF4FD", borderRadius: 20, padding: "5px 12px", fontSize: 12, fontWeight: 600, color: C.primary }}>{s.emoji} {lang === "hi" ? s.hi : s.en}</span>;
               })}
-              {symptoms.length === 0 && <span style={{ fontSize: 13, color: C.muted }}>{t("लक्षण नहीं मिले", "No symptoms recorded")}</span>}
+              {customSymptoms && (
+                <div style={{ width: "100%", background: "#F5F8FA", border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 13, color: C.text, fontStyle: "italic", marginTop: 4 }}>
+                  "{customSymptoms}"
+                </div>
+              )}
+              {symptoms.length === 0 && !customSymptoms && <span style={{ fontSize: 13, color: C.muted }}>{t("लक्षण नहीं मिले", "No symptoms recorded")}</span>}
             </div>
           </div>
 

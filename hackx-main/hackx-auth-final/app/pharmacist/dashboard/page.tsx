@@ -28,13 +28,6 @@ interface Pharmacist {
   stock: StockItem[];
 }
 
-const COMMON_MEDICINES = [
-  "Paracetamol", "ORS", "Amoxicillin", "Metformin", "Azithromycin",
-  "Cetirizine", "Ibuprofen", "Antacid", "Aspirin", "Albendazole",
-  "Omeprazole", "Amlodipine", "Atorvastatin", "Vitamin C", "Zinc Tablets",
-  "Doxycycline", "Ciprofloxacin", "Ranitidine", "Dolo 650", "Cough Syrup",
-];
-
 export default function PharmacistDashboard() {
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -46,8 +39,25 @@ export default function PharmacistDashboard() {
 
   // Add medicine form
   const [newMed, setNewMed] = useState({ medicineName: "", qty: "", minRequired: "30", price: "", inStock: true });
-  const [customName, setCustomName] = useState(false);
   const [addError, setAddError] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Debounced search for medicines
+  useEffect(() => {
+    if (!newMed.medicineName || newMed.medicineName.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/medicines/autocomplete?q=${encodeURIComponent(newMed.medicineName)}`);
+        const data = await res.json();
+        setSuggestions(data.suggestions || []);
+      } catch (e) {}
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [newMed.medicineName]);
 
   // Edit stock inline
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
@@ -103,7 +113,8 @@ export default function PharmacistDashboard() {
       if (data.error) { setAddError(data.error); setLoading(false); return; }
       setPharmacist(data.pharmacist);
       setNewMed({ medicineName: "", qty: "", minRequired: "30", price: "", inStock: true });
-      setCustomName(false);
+      setSuggestions([]);
+      setShowSuggestions(false);
       setActiveTab("stock");
       showSave(T("✅ दवाई जोड़ी गई!", "✅ Medicine added!"));
     } catch { setAddError(T("कुछ गलत हुआ", "Something went wrong")); }
@@ -158,7 +169,7 @@ export default function PharmacistDashboard() {
         )}
         {/* Header */}
         <div style={{ background: `linear-gradient(135deg,${C.orange},#D35400)`, padding: "16px 16px 20px", position: "relative" }}>
-          <div style={{ position: "absolute", right: -10, top: -10, fontSize: 80, opacity: .07 }}>🏪</div>
+          <div style={{ position: "absolute", right: -10, top: -10, fontSize: 80, opacity: .07, pointerEvents: "none" }}>🏪</div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <h2 style={{ fontSize: 17, fontWeight: 800, color: "white", margin: 0 }}>{pharmacist.storeName}</h2>
@@ -295,33 +306,30 @@ export default function PharmacistDashboard() {
           <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 40px" }}>
             {addError && <div style={{ background: "#FDEDED", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: C.red, fontWeight: 600 }}>⚠ {addError}</div>}
             <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, display: "block", marginBottom: 8 }}>💊 {T("दवाई का नाम *", "Medicine Name *")}</label>
-            {!customName ? (
-              <>
-                <select
-                  style={{ width: "100%", padding: "13px 16px", border: `2px solid ${C.border}`, borderRadius: 12, fontSize: 15, fontFamily: "inherit", background: C.card, color: newMed.medicineName ? C.text : C.muted, outline: "none", marginBottom: 8 }}
-                  value={newMed.medicineName}
-                  onChange={e => setNewMed({ ...newMed, medicineName: e.target.value })}>
-                  <option value="">{T("-- दवाई चुनें --", "-- Select Medicine --")}</option>
-                  {COMMON_MEDICINES.filter(m => !pharmacist.stock.find(s => s.medicineName.toLowerCase() === m.toLowerCase())).map(m => (
-                    <option key={m} value={m}>{m}</option>
+            <div style={{ position: "relative", marginBottom: 16 }}>
+              <input 
+                style={{ width: "100%", padding: "13px 16px", border: `2px solid ${C.orange}`, borderRadius: 12, fontSize: 15, fontFamily: "inherit", background: C.card, color: C.text, outline: "none", boxSizing: "border-box" }}
+                placeholder={T("दवाई का नाम लिखें (e.g. Paracetamol)", "Type medicine name (e.g. Paracetamol)")}
+                value={newMed.medicineName}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                onChange={e => setNewMed({ ...newMed, medicineName: e.target.value })} 
+              />
+              {showSuggestions && suggestions.length > 0 && (
+                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, marginTop: 4, zIndex: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxHeight: 200, overflowY: "auto" }}>
+                  {suggestions.map((s, i) => (
+                    <div key={i} 
+                      onClick={() => {
+                        setNewMed({ ...newMed, medicineName: s });
+                        setShowSuggestions(false);
+                      }}
+                      style={{ padding: "12px 16px", borderBottom: i < suggestions.length - 1 ? `1px solid ${C.border}` : "none", fontSize: 14, cursor: "pointer", color: C.text }}>
+                      {s}
+                    </div>
                   ))}
-                </select>
-                <button onClick={() => setCustomName(true)} style={{ background: "none", border: "none", color: C.primary, fontSize: 13, fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginBottom: 16 }}>
-                  + {T("लिस्ट में नहीं? खुद टाइप करें", "Not in list? Type custom name")}
-                </button>
-              </>
-            ) : (
-              <>
-                <input style={{ width: "100%", padding: "13px 16px", border: `2px solid ${C.orange}`, borderRadius: 12, fontSize: 15, fontFamily: "inherit", background: C.card, color: C.text, outline: "none", marginBottom: 8, boxSizing: "border-box" }}
-                  placeholder={T("दवाई का नाम लिखें", "Type medicine name")}
-                  value={newMed.medicineName}
-                  onChange={e => setNewMed({ ...newMed, medicineName: e.target.value })} autoFocus />
-                <button onClick={() => { setCustomName(false); setNewMed({ ...newMed, medicineName: "" }); }}
-                  style={{ background: "none", border: "none", color: C.muted, fontSize: 13, cursor: "pointer", textDecoration: "underline", marginBottom: 16 }}>
-                  ← {T("लिस्ट से चुनें", "Select from list")}
-                </button>
-              </>
-            )}
+                </div>
+              )}
+            </div>
             {[
               { key: "qty", label: T("📦 मौजूदा स्टॉक (qty) *", "📦 Current Stock (qty) *"), ph: "100", type: "number" },
               { key: "minRequired", label: T("⚠️ न्यूनतम स्टॉक", "⚠️ Minimum Stock Alert"), ph: "30", type: "number" },
