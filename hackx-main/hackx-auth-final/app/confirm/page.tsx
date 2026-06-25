@@ -336,6 +336,21 @@ export default function ConfirmPage() {
   const [loading, setLoading] = useState(false);
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsOnline(window.navigator.onLine);
+      const setOnline = () => setIsOnline(true);
+      const setOffline = () => setIsOnline(false);
+      window.addEventListener("online", setOnline);
+      window.addEventListener("offline", setOffline);
+      return () => {
+        window.removeEventListener("online", setOnline);
+        window.removeEventListener("offline", setOffline);
+      };
+    }
+  }, []);
 
   useEffect(() => {
     setLang(localStorage.getItem("lang") || "hi");
@@ -583,10 +598,12 @@ export default function ConfirmPage() {
             </div>
           ))}
         </div>
-        <div style={{ background: "#FEF9E7", borderRadius: 12, padding: 12, width: "100%", marginBottom: 16, border: "1px solid #F4D03F", display: "flex", gap: 8 }}>
-          <span>⚡</span>
-          <p style={{ fontSize: 13, color: "#7D6608", margin: 0, lineHeight: 1.5 }}>{T("जब इंटरनेट आएगा, डॉक्टर को सूचना मिलेगी", "When internet returns, doctor will be notified automatically")}</p>
-        </div>
+        {!isOnline && (
+          <div style={{ background: "#FEF9E7", borderRadius: 12, padding: 12, width: "100%", marginBottom: 16, border: "1px solid #F4D03F", display: "flex", gap: 8 }}>
+            <span>⚡</span>
+            <p style={{ fontSize: 13, color: "#7D6608", margin: 0, lineHeight: 1.5 }}>{T("जब इंटरनेट आएगा, डॉक्टर को सूचना मिलेगी", "When internet returns, doctor will be notified automatically")}</p>
+          </div>
+        )}
         <button onClick={() => router.push("/home")} style={{ width: "100%", padding: 16, borderRadius: 14, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 16, background: `linear-gradient(135deg,${C.primary},${C.primaryDark})`, color: "white" }}>
           🏠 {T("घर जाएं", "Go Home")}
         </button>
