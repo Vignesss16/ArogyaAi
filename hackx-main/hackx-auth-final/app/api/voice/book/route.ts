@@ -3,6 +3,16 @@ import dbConnect from "@/lib/mongodb";
 import Consultation from "@/models/Consultation";
 import Doctor from "@/models/Doctor";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 export async function POST(req: Request) {
   try {
     await dbConnect();
@@ -13,7 +23,7 @@ export async function POST(req: Request) {
     if (!patientPhone || !patientName || !symptoms) {
         return NextResponse.json({
             message: "I am missing some required details like your name, phone number, or symptoms. Could you please provide them?"
-        }, { status: 400 });
+        }, { status: 400, headers: corsHeaders });
     }
     
     // Simple triage logic based on voice symptoms
@@ -77,13 +87,13 @@ export async function POST(req: Request) {
         queueNo: queueNo,
         urgency: urgency,
         message: message
-    });
+    }, { headers: corsHeaders });
     
   } catch (error) {
     console.error("Voice Agent Book Appointment Error:", error);
     return NextResponse.json(
       { message: "There was an error booking your appointment. Please try again or visit the hospital directly." },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
