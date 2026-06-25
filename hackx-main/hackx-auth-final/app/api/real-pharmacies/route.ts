@@ -79,13 +79,24 @@ export async function GET(req: NextRequest) {
     }
 
     if (!data || !data.elements || data.elements.length === 0) {
-      console.error("All Overpass instances failed or returned 0 results:", lastError);
-      const fallbackPharmacies = generateFallbackPharmacies(parseFloat(lat), parseFloat(lng));
+      console.error("Overpass failed or returned 0 results. Trying Nominatim fallback...");
+      const nominatimPharmacies = await fetchNominatimPharmacies(parseFloat(lat), parseFloat(lng));
+      
+      if (nominatimPharmacies.length > 0) {
+        return NextResponse.json({ 
+          pharmacies: nominatimPharmacies, 
+          count: nominatimPharmacies.length,
+          error: "Used backup Nominatim API",
+          source: "OpenStreetMap (Real Data via Nominatim)"
+        });
+      }
+
+      console.error("Both Overpass and Nominatim failed.");
       return NextResponse.json({ 
-        pharmacies: fallbackPharmacies, 
-        count: fallbackPharmacies.length,
-        error: "Vercel blocked by OSM - using fallback data",
-        source: "Local Database"
+        pharmacies: [], 
+        count: 0,
+        error: "All real map APIs failed (Vercel IP Block)",
+        source: "None"
       });
     }
 
@@ -164,38 +175,45 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
-// Fallback generator if Vercel gets IP-blocked by OpenStreetMap
-function generateFallbackPharmacies(baseLat: number, baseLng: number) {
-  const pharmacies = [
-    { name: "Anu Medicals", distFactor: 0.003, type: "Private", phone: "9876543210" },
-    { name: "Balaji Medicals", distFactor: 0.005, type: "Private", phone: "9876543211" },
-    { name: "Apple Pharmacy", distFactor: -0.004, type: "Private", phone: "9876543212" },
-    { name: "Noble Medicals", distFactor: 0.007, type: "Private", phone: "9876543213" },
-    { name: "Sanjivani Chemist", distFactor: -0.006, type: "Private", phone: "9876543214" },
-    { name: "Govt Hospital Pharmacy", distFactor: 0.002, type: "Govt Free", phone: "9876543215" },
-  ];
-
-  return pharmacies.map((p, i) => {
-    // Slightly offset lat/lng to scatter pins around the user
-    const pLat = baseLat + (i % 2 === 0 ? p.distFactor : -p.distFactor);
-    const pLng = baseLng + (i % 3 === 0 ? p.distFactor : -p.distFactor);
-    const distance = haversineDistance(baseLat, baseLng, pLat, pLng);
+// Nominatim fallback (REAL OpenStreetMap Data) if Overpass blocks Vercel
+async function fetchNominatimPharmacies(lat: number, lng: number) {
+  try {
+    const radiusDeg = 0.02; // approx 2km
+    const url = `https://nominatim.openstreetmap.org/search.php?q=pharmacy&format=jsonv2&extratags=1&limit=30&viewbox=${lng - radiusDeg},${lat + radiusDeg},${lng + radiusDeg},${lat - radiusDeg}&bounded=1`;
+    console.log("Nominatim fallback URL:", url);
+    const response = await fetch(url, {
+      headers: { "User-Agent": "AarogyaAI/1.0 (contact@arogya.ai)" },
+      signal: AbortSignal.timeout(5000)
+    });
     
-    return {
-      id: `mock-${i}`,
-      name: p.name,
-      storeName: p.name,
-      village: "Nearby Area",
-      address: "Main Road",
-      phone: p.phone,
-      lat: pLat,
-      lng: pLng,
-      distanceKm: distance.toFixed(2),
-      distanceValue: distance,
-      type: p.type,
-      inStock: true,
-      opening_hours: "24/7",
-      website: ""
-    };
-  }).sort((a: any, b: any) => a.distanceValue - b.distanceValue);
+    if (!response.ok) return [];
+    
+    const data = await response.json();
+    return data.map((item: any, i: number) => {
+      const pLat = parseFloat(item.lat);
+      const pLng = parseFloat(item.lon);
+      const distance = haversineDistance(lat, lng, pLat, pLng);
+      const name = item.name || (item.extratags && item.extratags.name) || "Medical Store";
+      
+      return {
+        id: `nom-${item.place_id || i}`,
+        name: name,
+        storeName: name,
+        village: item.address?.suburb || "Nearby Area",
+        address: item.display_name?.split(',').slice(0, 3).join(',') || "",
+        phone: (item.extratags && item.extratags.phone) || "",
+        lat: pLat,
+        lng: pLng,
+        distanceKm: distance.toFixed(2),
+        distanceValue: distance,
+        type: name.toLowerCase().includes("govt") ? "Govt Free" : "Private",
+        inStock: true,
+        opening_hours: (item.extratags && item.extratags.opening_hours) || "24/7",
+        website: ""
+      };
+    }).sort((a: any, b: any) => a.distanceValue - b.distanceValue);
+  } catch (error) {
+    console.error("Nominatim fallback failed:", error);
+    return [];
+  }
 }
