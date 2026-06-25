@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     await dbConnect();
     
     const body = await req.json();
-    const { patientPhone, patientName, symptoms, doctorId } = body;
+    const { patientPhone, patientName, symptoms, doctorId, slot } = body;
     
     if (!patientPhone || !patientName || !symptoms) {
         return NextResponse.json({
@@ -69,6 +69,7 @@ export async function POST(req: Request) {
         },
         doctorId: assignedDoctorId,
         doctorName: assignedDoctorName,
+        slot: slot || "",
         queueNo: queueNo,
         status: "pending"
     });
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
     if (urgency === "RED") {
         message += "Please proceed to the emergency room immediately as your symptoms indicate a critical condition.";
     } else {
-        message += "Please arrive 15 minutes before your slot.";
+        message += slot ? `Please arrive at ${slot}.` : "Please arrive 15 minutes before your slot.";
     }
     
     return NextResponse.json({
