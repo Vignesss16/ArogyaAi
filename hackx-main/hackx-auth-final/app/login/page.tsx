@@ -329,10 +329,10 @@ export default function LoginPage() {
                 <label style={{ fontSize: 13, fontWeight: 600, color: C.muted, marginBottom: 6, display: "block" }}>
                   📱 {t("मोबाइल नंबर", "Mobile Number")}
                 </label>
-                <div style={{ display: "flex", alignItems: "center", border: `2px solid ${C.border}`, borderRadius: 14, overflow: "hidden", background: C.card }}>
-                  <span style={{ background: C.bg, padding: "14px", fontSize: 17, fontWeight: 700, color: C.muted, borderRight: `2px solid ${C.border}` }}>+91</span>
+                <div style={{ display: "flex", alignItems: "stretch", border: `2px solid ${C.border}`, borderRadius: 14, overflow: "hidden", background: C.card }}>
+                  <div style={{ display: "flex", alignItems: "center", background: C.bg, padding: "0 16px", fontSize: 16, fontWeight: 700, color: C.muted, borderRight: `2px solid ${C.border}` }}>+91</div>
                   <input
-                    style={{ flex: 1, border: "none", outline: "none", fontSize: 20, fontWeight: 700, padding: "14px", background: "transparent", color: C.text, letterSpacing: 1 }}
+                    style={{ flex: 1, border: "none", outline: "none", fontSize: 16, fontWeight: 700, padding: "14px 16px", background: "transparent", color: C.text, letterSpacing: 1 }}
                     type="tel" value={phone}
                     onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                     maxLength={10} disabled={loading} placeholder="0000000000"
@@ -386,9 +386,9 @@ export default function LoginPage() {
 
               <div style={{ marginBottom: 16 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 6, display: "block" }}>📱 {t("मोबाइल नंबर", "Mobile Number")}</label>
-                <div style={{ display: "flex", alignItems: "center", border: `2px solid ${C.border}`, borderRadius: 14, overflow: "hidden", background: C.card }}>
-                  <span style={{ background: C.bg, padding: "14px", fontSize: 15, fontWeight: 700, color: C.muted, borderRight: `2px solid ${C.border}` }}>+91</span>
-                  <input style={{ flex: 1, border: "none", outline: "none", fontSize: 18, fontWeight: 700, padding: "14px", background: "transparent", color: C.text }} type="tel" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} maxLength={10} disabled={loading} placeholder="0000000000" />
+                <div style={{ display: "flex", alignItems: "stretch", border: `2px solid ${C.border}`, borderRadius: 14, overflow: "hidden", background: C.card }}>
+                  <div style={{ display: "flex", alignItems: "center", background: C.bg, padding: "0 16px", fontSize: 16, fontWeight: 700, color: C.muted, borderRight: `2px solid ${C.border}` }}>+91</div>
+                  <input style={{ flex: 1, border: "none", outline: "none", fontSize: 16, fontWeight: 700, padding: "14px 16px", background: "transparent", color: C.text, letterSpacing: 1 }} type="tel" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} maxLength={10} disabled={loading} placeholder="0000000000" />
                 </div>
               </div>
 
@@ -527,9 +527,9 @@ export default function LoginPage() {
               {/* Phone */}
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 6, display: "block" }}>📱 {t("मोबाइल नंबर", "Mobile Number")}</label>
-                <div style={{ display: "flex", alignItems: "center", border: `2px solid ${C.border}`, borderRadius: 12, overflow: "hidden", background: C.card }}>
-                  <span style={{ background: C.bg, padding: "12px", fontSize: 15, fontWeight: 700, color: C.muted, borderRight: `2px solid ${C.border}` }}>+91</span>
-                  <input style={{ flex: 1, border: "none", outline: "none", fontSize: 18, fontWeight: 700, padding: "12px", background: "transparent", color: C.text }} type="tel" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} maxLength={10} disabled={loading} placeholder="0000000000" />
+                <div style={{ display: "flex", alignItems: "stretch", border: `2px solid ${C.border}`, borderRadius: 12, overflow: "hidden", background: C.card }}>
+                  <div style={{ display: "flex", alignItems: "center", background: C.bg, padding: "0 14px", fontSize: 16, fontWeight: 700, color: C.muted, borderRight: `2px solid ${C.border}` }}>+91</div>
+                  <input style={{ flex: 1, border: "none", outline: "none", fontSize: 16, fontWeight: 700, padding: "12px 14px", background: "transparent", color: C.text, letterSpacing: 1 }} type="tel" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} maxLength={10} disabled={loading} placeholder="0000000000" />
                 </div>
               </div>
 
