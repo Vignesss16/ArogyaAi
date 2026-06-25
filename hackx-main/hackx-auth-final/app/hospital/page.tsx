@@ -379,6 +379,7 @@ export default function HospitalDesktopDashboard() {
                           <th style={{ padding: "20px 32px", fontWeight: 700 }}>Patient Identity</th>
                           <th style={{ padding: "20px 32px", fontWeight: 700 }}>Clinical Symptoms</th>
                           <th style={{ padding: "20px 32px", fontWeight: 700 }}>Assigned Unit</th>
+                          <th style={{ padding: "20px 32px", fontWeight: 700 }}>Time</th>
                           <th style={{ padding: "20px 32px", fontWeight: 700 }}>Action</th>
                         </tr>
                       </thead>
@@ -386,8 +387,8 @@ export default function HospitalDesktopDashboard() {
                         {redPatients.map((p, i) => (
                           <tr key={p._id} style={{ borderTop: `1px solid ${C.border}`, transition: "background 0.2s" }} onMouseEnter={e => e.currentTarget.style.background = "#FEF2F2"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                             <td style={{ padding: "24px 32px" }}>
-                              <div style={{ fontWeight: 800, color: C.text, fontSize: 16 }}>{p.patientName}</div>
-                              <div style={{ fontSize: 14, color: C.muted, marginTop: 6, fontWeight: 500 }}>📱 {p.patientPhone}</div>
+                              <div style={{ fontWeight: 800, color: C.text, fontSize: 16 }}>{p.patientName === "Unknown" ? "Anonymous SOS Alert" : p.patientName}</div>
+                              <div style={{ fontSize: 14, color: C.muted, marginTop: 6, fontWeight: 500 }}>📱 {p.patientPhone === "unknown" ? "Location Pinged" : p.patientPhone}</div>
                             </td>
                             <td style={{ padding: "24px 32px" }}>
                               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -399,6 +400,9 @@ export default function HospitalDesktopDashboard() {
                             </td>
                             <td style={{ padding: "24px 32px" }}>
                               <div style={{ fontSize: 15, fontWeight: 700 }}>{p.doctorName || "Pending Assignment"}</div>
+                            </td>
+                            <td style={{ padding: "24px 32px", fontSize: 14, fontWeight: 600, color: C.muted }}>
+                              {p.createdAt ? new Date(p.createdAt).toLocaleTimeString(lang === 'hi' ? 'hi-IN' : 'en-US', { hour: '2-digit', minute: '2-digit' }) : "Just now"}
                             </td>
                             <td style={{ padding: "24px 32px" }}>
                               <button onClick={() => window.open(`tel:${p.patientPhone}`)} style={{ padding: "10px 20px", background: C.red, color: "white", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 10px rgba(239, 68, 68, 0.3)" }}>
