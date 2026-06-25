@@ -180,7 +180,7 @@ export default function RecordsPage() {
         ) : (
           <div style={{ background: "#E8F8EF", padding: "6px 16px", fontSize: 12, fontWeight: 700, color: C.green, display: "flex", alignItems: "center", gap: 6 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.green, boxShadow: `0 0 6px ${C.green}` }} />
-            {t("लाइव डेटा — डेटाबेस से", "Live Data — from database")}
+            {t("लाइव — सुरक्षित रूप से सिंक किया गया", "Live — Securely Synced")}
           </div>
         )}
 
