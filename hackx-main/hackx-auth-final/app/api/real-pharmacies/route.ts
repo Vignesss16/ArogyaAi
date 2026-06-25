@@ -60,8 +60,11 @@ export async function GET(req: NextRequest) {
         const response = await fetch(overpassUrl, {
           method: "POST",
           body: `data=${encodeURIComponent(overpassQuery)}`,
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          signal: AbortSignal.timeout(15000), // 15 second timeout to allow slower servers to respond
+          headers: { 
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "AarogyaAI/1.0 (Health Hackathon App; contact@arogya.ai)"
+          },
+          signal: AbortSignal.timeout(3500),
         });
 
         if (response.ok) {
