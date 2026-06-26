@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
           name: body.patientName,
           phone: body.patientPhone && body.patientPhone !== "unknown" ? body.patientPhone : `unknown-${Date.now()}`,
           age: 0,
-          gender: "unknown",
+          gender: "other",
           village: "Auto-registered via ASHA Visit",
           password: "auto-generated-no-login-yet",
         });
