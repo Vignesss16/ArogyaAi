@@ -94,6 +94,21 @@ export default function HospitalDesktopDashboard() {
     }
   }, [auth, fetchData]);
 
+  const handleResolveSOS = async (id: string) => {
+    try {
+      const res = await fetch("/api/sos", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: "resolved", doctorNotes: "Resolved by Admin" }),
+      });
+      if (res.ok) {
+        setSosAlerts((prev) => prev.filter((a) => a._id !== id));
+      }
+    } catch {
+      // offline
+    }
+  };
+
   if (!mounted) return null;
 
   if (!auth) {
@@ -304,9 +319,14 @@ export default function HospitalDesktopDashboard() {
                 {alert.ashaWorkerName} (ASHA) reports <span style={{ background: "rgba(255,255,255,0.25)", padding: "4px 10px", borderRadius: 8, fontWeight: 800, color: "white", margin: "0 6px", display: "inline-flex", alignItems: "center", gap: 4, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.4)" }}>🧑‍🤝‍🧑 {alert.affectedCount} Affected</span> — {alert.description || "Immediate response required."}
               </p>
             </div>
-            <div style={{ background: "white", color: C.red, padding: "8px 16px", borderRadius: 12, fontWeight: 800, fontSize: 14 }}>
-              {alert.status === "resolved" ? "Resolved" : "ACTIVE"}
-            </div>
+            <button 
+              onClick={() => handleResolveSOS(alert._id)}
+              style={{ background: "white", color: C.red, padding: "8px 16px", borderRadius: 12, fontWeight: 800, fontSize: 14, border: "none", cursor: "pointer", boxShadow: "0 4px 6px rgba(0,0,0,0.1)", transition: "transform 0.2s" }}
+              onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.05)"}
+              onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
+            >
+              {alert.status === "resolved" ? "Resolved" : "Resolve ✅"}
+            </button>
           </div>
         ))}
 
