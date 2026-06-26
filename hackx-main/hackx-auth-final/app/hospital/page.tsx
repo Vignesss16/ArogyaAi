@@ -372,16 +372,16 @@ export default function HospitalDesktopDashboard() {
         {(activeTab === "dashboard" || activeTab === "analytics") && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24, marginBottom: 40 }}>
             {[
-              { label: T("कुल सक्रिय मरीज़", "Total Active Patients"), value: totalPatients, trend: "+12%", icon: "👥", color: C.primary },
-              { label: T("गंभीर आपात स्थिति", "Critical Emergencies"), id: "emergency", value: redPatients.length, trend: "Urgent", icon: "🚨", color: C.red, alert: redPatients.length > 0 },
-              { label: T("ठीक हुए मरीज़", "Cured Patients"), value: curedPatientsCount, trend: "Success", icon: "✅", color: C.green },
-              { label: T("ड्यूटी पर डॉक्टर", "Doctors on Duty"), value: doctors.length, trend: "Optimal", icon: "👩‍⚕️", color: C.primaryLight },
-              { label: T("भर्ती मरीज़", "Admitted / Critical"), value: admittedPatients.length, trend: "Beds Occupied", icon: "🏥", color: C.red },
-              { label: T("क्लीनिक विजिट", "Outpatient Clinic"), value: outpatientClinic.length, trend: "In-Person", icon: "👨‍⚕️", color: C.primaryLight },
-              { label: T("टेलीमेडिसिन", "Telemedicine Calls"), value: telemedicineVisits.length, trend: "Virtual", icon: "📱", color: C.accent },
-              { label: T("आशा विजिट", "ASHA Field Visits"), value: fieldVisits, trend: "Community", icon: "🏘️", color: C.yellow },
+              { label: T("कुल सक्रिय मरीज़", "Total Active Patients"), value: totalPatients, trend: "+12%", icon: "👥", color: C.primary, info: T("सभी मरीज़ जिनका इलाज अभी चल रहा है", "All patients currently under triage/care") },
+              { label: T("गंभीर आपात स्थिति", "Critical Emergencies"), id: "emergency", value: redPatients.length, trend: "Urgent", icon: "🚨", color: C.red, alert: redPatients.length > 0, info: T("RED प्राथमिकता वाले मरीज़ जिन्हें तुरंत इलाज की आवश्यकता है", "Patients marked with RED priority requiring immediate attention") },
+              { label: T("ठीक हुए मरीज़", "Cured Patients"), value: curedPatientsCount, trend: "Success", icon: "✅", color: C.green, info: T("वे मरीज़ जिन्हें ठीक घोषित कर दिया गया है", "Patients whose cases have been resolved/cured") },
+              { label: T("ड्यूटी पर डॉक्टर", "Doctors on Duty"), value: doctors.length, trend: "Optimal", icon: "👩‍⚕️", color: C.primaryLight, info: T("वर्तमान में उपलब्ध डॉक्टरों की संख्या", "Total number of doctors currently on duty") },
+              { label: T("भर्ती मरीज़", "Admitted / Critical"), value: admittedPatients.length, trend: "Beds Occupied", icon: "🏥", color: C.red, info: T("100% RED और 50% YELLOW मरीज़ जिन्हें भर्ती माना गया है", "Calculated based on 100% of RED cases and 50% of YELLOW cases") },
+              { label: T("क्लीनिक विजिट", "Outpatient Clinic"), value: outpatientClinic.length, trend: "In-Person", icon: "👨‍⚕️", color: C.primaryLight, info: T("60% GREEN और 50% YELLOW मरीज़ जो ओपीडी में हैं", "Outpatient clinic count derived from 60% of GREEN and 50% of YELLOW cases") },
+              { label: T("टेलीमेडिसिन", "Telemedicine Calls"), value: telemedicineVisits.length, trend: "Virtual", icon: "📱", color: C.accent, info: T("40% GREEN मरीज़ जिनका ऑनलाइन इलाज चल रहा है", "Virtual consultations derived from remaining 40% of GREEN cases") },
+              { label: T("आशा विजिट", "ASHA Field Visits"), value: fieldVisits, trend: "Community", icon: "🏘️", color: C.yellow, info: T("आशा कार्यकर्ताओं द्वारा दर्ज किए गए कुल घर-घर विजिट", "Total number of door-to-door visits logged by ASHA workers") },
             ].map((kpi, i) => (
-              <div key={i} onClick={() => kpi.id === "emergency" && document.getElementById("emergency-triage")?.scrollIntoView({ behavior: "smooth", block: "center" })} style={{ background: C.card, borderRadius: 24, padding: 32, border: `1px solid ${C.border}`, position: "relative", overflow: "hidden", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)", cursor: kpi.id === "emergency" ? "pointer" : "default", animation: kpi.id === "emergency" && kpi.alert ? "alertGlow 1.5s infinite" : "none" }}>
+              <div key={i} onClick={() => kpi.id === "emergency" && document.getElementById("emergency-triage")?.scrollIntoView({ behavior: "smooth", block: "center" })} style={{ background: C.card, borderRadius: 24, padding: 32, border: `1px solid ${C.border}`, position: "relative", overflow: "hidden", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)", cursor: kpi.id === "emergency" ? "pointer" : "default", animation: kpi.id === "emergency" && kpi.alert ? "alertGlow 1.5s infinite" : "none", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                 {kpi.alert && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 6, background: C.red, animation: "pulse 1.5s infinite" }} />}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
                   <div style={{ width: 56, height: 56, borderRadius: 16, background: `${kpi.color}15`, color: kpi.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
@@ -393,7 +393,10 @@ export default function HospitalDesktopDashboard() {
                 </div>
                 <div>
                   <div style={{ fontSize: 40, fontWeight: 800, color: kpi.alert ? C.red : C.text, lineHeight: 1, marginBottom: 12 }}>{kpi.value}</div>
-                  <div style={{ fontSize: 15, color: C.muted, fontWeight: 600 }}>{kpi.label}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ fontSize: 15, color: C.muted, fontWeight: 600 }}>{kpi.label}</div>
+                    <div title={kpi.info} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 16, height: 16, borderRadius: "50%", background: C.border, color: C.muted, fontSize: 10, fontWeight: 800, cursor: "help" }}>i</div>
+                  </div>
                 </div>
               </div>
             ))}
