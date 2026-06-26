@@ -301,7 +301,7 @@ export default function HospitalDesktopDashboard() {
                 SOS EMERGENCY: {alert.village}
               </h4>
               <p style={{ fontSize: 14, color: "rgba(255,255,255,.9)", margin: 0, marginTop: 4 }}>
-                {alert.ashaWorkerName} (ASHA) reports {alert.affectedCount} affected — {alert.description || "Immediate response required."}
+                {alert.ashaWorkerName} (ASHA) reports <span style={{ background: "rgba(255,255,255,0.25)", padding: "4px 10px", borderRadius: 8, fontWeight: 800, color: "white", margin: "0 6px", display: "inline-flex", alignItems: "center", gap: 4, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.4)" }}>🧑‍🤝‍🧑 {alert.affectedCount} Affected</span> — {alert.description || "Immediate response required."}
               </p>
             </div>
             <div style={{ background: "white", color: C.red, padding: "8px 16px", borderRadius: 12, fontWeight: 800, fontSize: 14 }}>
