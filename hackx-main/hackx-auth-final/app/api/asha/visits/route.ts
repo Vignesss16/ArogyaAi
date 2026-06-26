@@ -44,8 +44,8 @@ export async function POST(req: NextRequest) {
         if (body.ashaWorkerPhone) {
           const { ASHAWorker } = require("@/models/index");
           const worker = await ASHAWorker.findOne({ phone: body.ashaWorkerPhone });
-          if (worker && worker.villages) {
-            defaultVillage = worker.villages;
+          if (worker && worker.villages && worker.villages.length > 0) {
+            defaultVillage = worker.villages[0];
           }
         }
 
