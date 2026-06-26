@@ -68,20 +68,6 @@ export default function ASHATriagePage() {
     setLoading(false);
   };
 
-  return (
-    <div style={{ background: "#0d1520", minHeight: "100vh", display: "flex", justifyContent: "center" }}>
-      <div style={{ width: 390, background: C.bg, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", padding: "44px 14px 10px", gap: 10, background: C.card, borderBottom: `1px solid ${C.border}` }}>
-          <button onClick={() => router.push("/asha/dashboard")} style={{ width: 36, height: 36, borderRadius: 10, background: C.bg, border: "none", fontSize: 18, cursor: "pointer" }}>←</button>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>{T("AI Triage", "AI Triage Assistant")}</div>
-            <div style={{ fontSize: 11, color: C.muted }}>{T("लक्षण दर्ज करें", "Enter patient symptoms")}</div>
-          </div>
-        </div>
-
-  // ── GREEN HOME REMEDIES PANEL (Copied from main triage) ──────────────────
   const GreenRemediesPanel = () => (
     <div style={{ background: C.card, borderRadius: 16, padding: 14, marginTop: 12, border: `2px solid #27AE60` }}>
       <div style={{ fontSize: 12, fontWeight: 800, color: C.green, textTransform: "uppercase", letterSpacing: .8, marginBottom: 10 }}>
