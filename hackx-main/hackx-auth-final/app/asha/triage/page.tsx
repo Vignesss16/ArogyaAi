@@ -55,10 +55,15 @@ export default function ASHATriagePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ symptoms: selectedNames, customSymptoms: symptoms, duration: "", diseases: [] }),
       });
+      if (!res.ok) throw new Error("API failed");
       const data = await res.json();
       setResult(data);
     } catch (err) {
-      console.error(err);
+      console.error("AI triage failed, using fallback:", err);
+      // Import the fallbackTriage function dynamically on client
+      const { fallbackTriage } = await import("@/lib/triage");
+      const data = fallbackTriage(selected);
+      setResult(data);
     }
     setLoading(false);
   };
