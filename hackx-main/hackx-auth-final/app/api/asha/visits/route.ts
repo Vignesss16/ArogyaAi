@@ -40,12 +40,21 @@ export async function POST(req: NextRequest) {
       const existingPatient = await Patient.findOne(patientQuery);
       
       if (!existingPatient) {
+        let defaultVillage = "Auto-registered via ASHA Visit";
+        if (body.ashaWorkerPhone) {
+          const { ASHAWorker } = require("@/models/index");
+          const worker = await ASHAWorker.findOne({ phone: body.ashaWorkerPhone });
+          if (worker && worker.villages) {
+            defaultVillage = worker.villages;
+          }
+        }
+
         await Patient.create({
           name: body.patientName,
           phone: body.patientPhone && body.patientPhone !== "unknown" ? body.patientPhone : `unknown-${Date.now()}`,
           age: 0,
           gender: "other",
-          village: "Auto-registered via ASHA Visit",
+          village: defaultVillage,
           password: "auto-generated-no-login-yet",
         });
       }
