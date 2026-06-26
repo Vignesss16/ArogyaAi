@@ -73,11 +73,15 @@ export default function LogVisitPage() {
     try {
       if (isOnline) {
         // Send directly to server when online
-        await fetch("/api/asha/visits", {
+        const res = await fetch("/api/asha/visits", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(visitData),
         });
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || "Failed to save to server");
+        }
       } else {
         // OFFLINE: Save to IndexedDB + sync queue
         const db = getDB();

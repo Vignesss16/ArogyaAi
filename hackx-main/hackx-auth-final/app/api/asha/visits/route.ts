@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
           age: 0,
           gender: "unknown",
           village: "Auto-registered via ASHA Visit",
+          password: "auto-generated-no-login-yet",
         });
       }
     }

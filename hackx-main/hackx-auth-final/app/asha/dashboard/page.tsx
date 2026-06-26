@@ -101,7 +101,14 @@ export default function ASHADashboardPage() {
               <h2 style={{ fontSize: 18, fontWeight: 800, color: "white", margin: 0 }}>{T("मेरे गाँव के मरीज़", "My Village Patients")}</h2>
               <p style={{ fontSize: 11, color: "rgba(255,255,255,.65)", marginTop: 3 }}>{ashaName} · {ashaVillages}</p>
             </div>
-            <button onClick={() => { window.location.href = "/asha/sos"; }} style={{ background: C.red, color: "white", border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>🚨 SOS</button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => { window.location.href = "/asha/triage"; }} style={{ background: "rgba(255,255,255,0.2)", color: "white", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 10, padding: "8px 10px", fontWeight: 800, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                🤖 {T("AI जाँच", "AI Triage")}
+              </button>
+              <button onClick={() => { window.location.href = "/asha/sos"; }} style={{ background: C.red, color: "white", border: "none", borderRadius: 10, padding: "8px 10px", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
+                🚨 SOS
+              </button>
+            </div>
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
             {[
