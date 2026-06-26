@@ -395,7 +395,7 @@ export default function HospitalDesktopDashboard() {
                   <div style={{ fontSize: 40, fontWeight: 800, color: kpi.alert ? C.red : C.text, lineHeight: 1, marginBottom: 12 }}>{kpi.value}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <div style={{ fontSize: 15, color: C.muted, fontWeight: 600 }}>{kpi.label}</div>
-                    <div title={kpi.info} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 16, height: 16, borderRadius: "50%", background: C.border, color: C.muted, fontSize: 10, fontWeight: 800, cursor: "help" }}>i</div>
+                    <InfoButton text={kpi.info} />
                   </div>
                 </div>
               </div>
