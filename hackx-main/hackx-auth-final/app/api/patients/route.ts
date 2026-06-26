@@ -5,6 +5,7 @@ import Patient from "@/models/Patient";
 
 export async function GET(req: NextRequest) {
   const phone = req.nextUrl.searchParams.get("phone");
+  const village = req.nextUrl.searchParams.get("village");
   try {
     await dbConnect();
     
@@ -12,10 +13,17 @@ export async function GET(req: NextRequest) {
     if (phone) {
       // If it contains only digits or starts with 'unknown-', treat as phone
       if (/^\d+$/.test(phone) || phone.startsWith("unknown-")) {
-        query = { phone };
+        query.phone = phone;
       } else {
         // Otherwise treat as a case-insensitive name search
-        query = { name: { $regex: new RegExp(phone, "i") } };
+        query.name = { $regex: new RegExp(phone, "i") };
+      }
+    }
+    
+    if (village) {
+      const villagesList = village.split(",").map(v => v.trim()).filter(Boolean);
+      if (villagesList.length > 0) {
+        query.village = { $in: villagesList.map(v => new RegExp(v, "i")) };
       }
     }
 

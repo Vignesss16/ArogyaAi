@@ -33,10 +33,15 @@ export default function ASHADashboardPage() {
   const ashaVillages = session?.user?.villages || "";
 
   const fetchPatients = useCallback(async () => {
-    try { const r = await fetch("/api/patients"); const d = await r.json(); setPatients(d.patients || []); }
+    try { 
+      const queryParams = ashaVillages ? `?village=${encodeURIComponent(ashaVillages)}` : '';
+      const r = await fetch(`/api/patients${queryParams}`); 
+      const d = await r.json(); 
+      setPatients(d.patients || []); 
+    }
     catch { /* offline */ }
     setLoadingPt(false);
-  }, []);
+  }, [ashaVillages]);
 
   // Re-fetch patients when switching to the 'patients' tab
   useEffect(() => {
