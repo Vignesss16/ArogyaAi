@@ -95,6 +95,7 @@ export default function HospitalDesktopDashboard() {
   }, [auth, fetchData]);
 
   const handleResolveSOS = async (id: string) => {
+    if (!window.confirm(T("क्या आप वाकई इस आपातकाल को हल करना चाहते हैं?", "Are you sure you want to mark this SOS emergency as resolved?"))) return;
     try {
       const res = await fetch("/api/sos", {
         method: "PATCH",
@@ -321,11 +322,11 @@ export default function HospitalDesktopDashboard() {
             </div>
             <button 
               onClick={() => handleResolveSOS(alert._id)}
-              style={{ background: "white", color: C.red, padding: "8px 16px", borderRadius: 12, fontWeight: 800, fontSize: 14, border: "none", cursor: "pointer", boxShadow: "0 4px 6px rgba(0,0,0,0.1)", transition: "transform 0.2s" }}
-              onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.05)"}
-              onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
+              style={{ background: "white", color: "#991B1B", padding: "8px 20px", borderRadius: 8, fontWeight: 700, fontSize: 14, border: "1px solid rgba(153, 27, 27, 0.2)", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.05)", transition: "all 0.2s ease" }}
+              onMouseOver={(e) => { e.currentTarget.style.background = "#fef2f2"; e.currentTarget.style.borderColor = "#991B1B"; }}
+              onMouseOut={(e) => { e.currentTarget.style.background = "white"; e.currentTarget.style.borderColor = "rgba(153, 27, 27, 0.2)"; }}
             >
-              {alert.status === "resolved" ? "Resolved" : "Resolve ✅"}
+              {alert.status === "resolved" ? "Resolved" : "Resolve Alert"}
             </button>
           </div>
         ))}
