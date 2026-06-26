@@ -186,6 +186,7 @@ export interface IBloodTest extends Document {
   status:         "pending" | "completed" | "reviewed";
   reviewedBy?:    string;  // doctor phone
   reviewedNotes?: string;
+  assignedDoctorId?: string;
   createdAt:      Date;
 }
 
@@ -208,6 +209,7 @@ const BloodTestSchema = new Schema<IBloodTest>(
     status:          { type: String, enum: ["pending", "completed", "reviewed"], default: "completed" },
     reviewedBy:      { type: String, default: "" },
     reviewedNotes:   { type: String, default: "" },
+    assignedDoctorId:{ type: String, default: "" },
   },
   { timestamps: true }
 );

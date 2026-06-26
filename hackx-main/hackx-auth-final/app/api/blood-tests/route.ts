@@ -38,7 +38,10 @@ export async function GET(req: NextRequest) {
       const Consultation = (await import("@/models/Consultation")).default;
       const consultations = await Consultation.find({ doctorId });
       const patientPhones = consultations.map(c => c.patientPhone);
-      query.patientPhone = { $in: patientPhones };
+      query.$or = [
+        { assignedDoctorId: doctorId },
+        { patientPhone: { $in: patientPhones } }
+      ];
     }
     if (submittedBy) query.submittedBy = submittedBy;
     if (isCritical === "true") query.isCritical = true;
@@ -54,7 +57,7 @@ export async function POST(req: NextRequest) {
   try {
     await dbConnect();
     const body = await req.json();
-    const { patientPhone, patientName, submittedBy, submittedByName, testType, result, numericValue, unit, notes, imageDataUrl, labName, testDate } = body;
+    const { patientPhone, patientName, submittedBy, submittedByName, testType, result, numericValue, unit, notes, imageDataUrl, labName, testDate, assignedDoctorId } = body;
 
     if (!patientPhone || !testType || !result) {
       return NextResponse.json({ error: "Patient phone, test type, and result are required" }, { status: 400 });
@@ -102,6 +105,7 @@ export async function POST(req: NextRequest) {
       labName: labName || "",
       testDate: testDate ? new Date(testDate) : new Date(),
       status: "completed",
+      assignedDoctorId: assignedDoctorId || "",
     });
 
     return NextResponse.json({ test, isCritical });

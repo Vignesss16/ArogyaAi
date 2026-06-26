@@ -40,15 +40,24 @@ export default function ASHABloodTestPage() {
     labName: "",
     testDate: new Date().toISOString().split("T")[0],
     imageDataUrl: "",
+    assignedDoctorId: "",
   });
 
   const T = (hi: string, en: string) => lang === "hi" ? hi : en;
   const ashaPhone = session?.user?.phone || "";
   const ashaName = session?.user?.name || "";
 
+  const [doctors, setDoctors] = useState<any[]>([]);
+
   useEffect(() => {
     setLang(localStorage.getItem("lang") || "hi");
     if (status === "unauthenticated" || session?.user?.role !== "ashaworker") router.replace("/asha/login");
+    
+    // Fetch doctors for assignment
+    fetch("/api/admin/doctors")
+      .then(res => res.json())
+      .then(data => setDoctors(data.doctors || []))
+      .catch(console.error);
   }, [status]);
 
   const handleTestTypeChange = (testType: string) => {
@@ -147,6 +156,16 @@ export default function ASHABloodTestPage() {
               style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `2px solid ${C.border}`, fontSize: 14, background: "white" }}>
               {TEST_TYPES.map(t => <option key={t.id} value={t.id}>{t.id}</option>)}
             </select>
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: C.text, display: "block", marginBottom: 4 }}>Assign to Doctor (Optional)</label>
+            <select value={form.assignedDoctorId} onChange={e => setForm(prev => ({ ...prev, assignedDoctorId: e.target.value }))}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `2px solid ${C.border}`, fontSize: 14, background: "white" }}>
+              <option value="">-- No specific doctor --</option>
+              {doctors.map(d => <option key={d._id} value={d._id}>Dr. {d.name} ({d.hospital})</option>)}
+            </select>
+            <div style={{ fontSize: 10, color: C.muted, marginTop: 4 }}>If selected, this doctor will immediately see the report.</div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>

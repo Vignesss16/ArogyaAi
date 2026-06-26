@@ -70,9 +70,10 @@ export default function DoctorDashboardPage() {
   const [savingReview, setSavingReview] = useState(false);
 
   const fetchQueue = useCallback(async () => {
+    if (!session?.user?.id) return; // Wait for session to load
     try {
-      // Append doctorId to query if available
-      const doctorIdQuery = session?.user?.id ? `&doctorId=${session.user.id}` : "";
+      // Append doctorId to query
+      const doctorIdQuery = `&doctorId=${session.user.id}`;
       const res = await fetch(`/api/consultations?status=pending${doctorIdQuery}`);
       const data = await res.json();
       setQueue(data.consultations || []);
@@ -91,8 +92,9 @@ export default function DoctorDashboardPage() {
   }, []);
 
   const fetchBloodTests = useCallback(async () => {
+    if (!session?.user?.id) return; // Wait for session to load
     try {
-      const doctorIdQuery = session?.user?.id ? `&doctorId=${session.user.id}` : "";
+      const doctorIdQuery = `&doctorId=${session.user.id}`;
       // Fetch critical tests first, then all tests
       const [criticalRes, allRes] = await Promise.all([
         fetch(`/api/blood-tests?isCritical=true${doctorIdQuery}`),

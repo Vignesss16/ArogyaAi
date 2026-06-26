@@ -54,19 +54,24 @@ export default function HospitalDesktopDashboard() {
 
   const T = (hi: string, en: string) => lang === "hi" ? hi : en;
 
+  const [sosAlerts, setSosAlerts] = useState<any[]>([]);
+
   const fetchData = useCallback(async () => {
     try {
-      const [resQueue, resDocs, resAsha] = await Promise.all([
+      const [resQueue, resDocs, resAsha, resSos] = await Promise.all([
         fetch("/api/consultations?status=all"),
         fetch("/api/admin/doctors"),
-        fetch("/api/asha/visits")
+        fetch("/api/asha/visits"),
+        fetch("/api/sos")
       ]);
       const dataQueue = await resQueue.json();
       const dataDocs = await resDocs.json();
       const dataAsha = await resAsha.json();
+      const dataSos = await resSos.json();
       setQueue(dataQueue.consultations || []);
       setDoctors(dataDocs.doctors || []);
       setAshaVisits(dataAsha.visits || []);
+      setSosAlerts(dataSos.alerts || []);
     } catch {
       /* offline */
     }
@@ -284,6 +289,26 @@ export default function HospitalDesktopDashboard() {
             <div style={{ fontSize: 24, fontWeight: 800, color: C.text }}>{new Date().toLocaleTimeString(lang === 'hi' ? 'hi-IN' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</div>
           </div>
         </div>
+
+        {/* SOS banner — live from DB */}
+        {sosAlerts.length > 0 && sosAlerts.map(alert => (
+          <div key={alert._id}
+            style={{ background: `linear-gradient(135deg,${C.red},#991B1B)`, padding: "16px 24px", display: "flex", alignItems: "center", gap: 16, borderRadius: 20, marginBottom: 40, boxShadow: "0 10px 25px -5px rgba(239, 68, 68, 0.3)" }}
+          >
+            <span style={{ fontSize: 28, animation: "shake .6s infinite", display: "inline-block" }}>🚨</span>
+            <div style={{ flex: 1 }}>
+              <h4 style={{ fontSize: 18, fontWeight: 800, color: "white", margin: 0 }}>
+                SOS EMERGENCY: {alert.village}
+              </h4>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,.9)", margin: 0, marginTop: 4 }}>
+                {alert.ashaWorkerName} (ASHA) reports {alert.affectedCount} affected — {alert.description || "Immediate response required."}
+              </p>
+            </div>
+            <div style={{ background: "white", color: C.red, padding: "8px 16px", borderRadius: 12, fontWeight: 800, fontSize: 14 }}>
+              {alert.status === "resolved" ? "Resolved" : "ACTIVE"}
+            </div>
+          </div>
+        ))}
 
         {/* Advanced Search & Filter Bar */}
         <div style={{ background: C.card, borderRadius: 24, padding: "20px 32px", display: "flex", alignItems: "center", gap: 24, marginBottom: 40, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)", border: `1px solid ${C.border}` }}>
