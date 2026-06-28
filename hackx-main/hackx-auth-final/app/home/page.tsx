@@ -57,7 +57,7 @@ export default function HomePage() {
   // Listen for incoming calls from the doctor via Pusher
   useEffect(() => {
     if (!user) return;
-    
+
     const patientId =
       (user as any).phone as string ||
       (user as any)._id as string ||
@@ -65,7 +65,7 @@ export default function HomePage() {
     const roomId = `consultation-${patientId}`;
     const channelName = roomId;
     const cid = patientClientIdRef.current;
-    
+
     const pusher = getPusherClient();
     const channel = pusher.subscribe(channelName);
 
@@ -81,7 +81,7 @@ export default function HomePage() {
       console.log(`[Patient] Received signal:`, msg);
       // Ignore own echoes
       if (msg.fromClientId === cid) return;
-      
+
       if (msg.type === "call-invite") {
         const mode = (msg.data as { mode?: string })?.mode as "video" | "audio" ?? "video";
         setIncomingCallType(mode);
@@ -117,7 +117,7 @@ export default function HomePage() {
   // Fetch dynamic stats (consultations and doctors online)
   useEffect(() => {
     if (!user) return;
-    
+
     // Fetch personal consultations history
     const identifier = (user as any).phone || (user as any)._id;
     if (identifier) {
@@ -607,7 +607,7 @@ export default function HomePage() {
 
             {/* Number 1 */}
             {[
-              { label: t("वॉइस एजेंट 1", "Voice Agent 1"), number: "+14786063734" },
+              { label: t("वॉइस एजेंट 1", "Voice Agent 1"), number: "+16893083089" },
               { label: t("वॉइस एजेंट 2", "Voice Agent 2"), number: "+14784437687" },
               { label: t("वॉइस एजेंट 3", "Voice Agent 3"), number: "+12602766832" },
             ].map((agent, i) => (
